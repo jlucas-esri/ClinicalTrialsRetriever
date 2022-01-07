@@ -1,4 +1,5 @@
 import requests
+from nciRetriever.updateFC import updateFC
 from datetime import date
 import pandas as pd
 import logging
@@ -200,4 +201,5 @@ def main():
     #     json.dump(trialJson, f)
 
 if __name__ == '__main__':
-    main()
+    # main()
+    updateFC()
