@@ -16,6 +16,8 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
+today = date.today()
+
 def main():
 
     baseUrl = r'https://clinicaltrialsapi.cancer.gov/api/v2/'
@@ -35,7 +37,6 @@ def main():
     totalNumTrials = trialJson['total']
 
     start = time.perf_counter()
-    today = date.today()
 
     createdTrialCsv = False
     createdSiteCsv = False
@@ -201,5 +202,5 @@ def main():
     #     json.dump(trialJson, f)
 
 if __name__ == '__main__':
-    # main()
-    updateFC()
+    main()
+    updateFC(today)
