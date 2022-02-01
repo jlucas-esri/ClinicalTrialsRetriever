@@ -1,5 +1,8 @@
 import requests
+from typing import List
 from nciRetriever.updateFC import updateFC
+from nciRetriever.csvToArcgisPro import csvToArcgisPro
+from nciRetriever.geocode import geocodeSites
 from datetime import date
 import pandas as pd
 import logging
@@ -8,6 +11,7 @@ import json
 import time
 import sys
 import os
+from pprint import pprint
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -18,7 +22,157 @@ logger.setLevel(logging.DEBUG)
 
 today = date.today()
 
-def main():
+def createTrialDict(trial: dict) -> dict:
+    trialDict = {'nciId': trial['nci_id'], 
+                'protocolId': trial['protocol_id'],
+                'nctId': trial['nct_id'], 
+                'detailDesc': trial['detail_description'], 
+                'officialTitle': trial['official_title'], 
+                'phase': trial['phase'], 
+                'leadOrg': trial['lead_org'], 
+                'amendmentDate': trial['amendment_date'], 
+                'primaryPurpose': trial['primary_purpose'], 
+                'currentTrialStatus': trial['current_trial_status'],
+                'startDate': trial['start_date']}
+    if 'completion_date' in trial.keys():
+        trialDict.update({'completionDate': trial['completion_date']})
+    if 'active_sites_count' in trial.keys():
+        trialDict.update({'activeSitesCount': trial['active_sites_count']})
+    if 'max_age_in_years' in trial['eligibility']['structured'].keys():
+        trialDict.update({'maxAgeInYears': int(trial['eligibility']['structured']['max_age_in_years'])})
+    if 'min_age_in_years' in trial['eligibility']['structured'].keys():
+        trialDict.update({'minAgeInYears': int(trial['eligibility']['structured']['min_age_in_years'])})
+    if 'gender' in trial['eligibility']['structured'].keys():
+        trialDict.update({'gender': trial['eligibility']['structured']['gender']})
+    if 'accepts_healthy_volunteers' in trial['eligibility']['structured'].keys():
+        trialDict.update({'acceptsHealthyVolunteers': trial['eligibility']['structured']['accepts_healthy_volunteers']})
+    if 'study_source' in trial.keys():
+        trialDict.update({'studySource': trial['study_source']})
+    if 'study_protocol_type' in trial.keys():
+        trialDict.update({'studyProtocolType': trial['study_protocol_type']})
+    if 'record_verification_date' in trial.keys():
+        trialDict.update({'recordVerificationDate': trial['record_verification_date']})
+    
+    return trialDict
+
+def createSiteDict(trial:dict, site:dict) -> dict:
+    siteDict = {'nciId': trial['nci_id'],
+                        'orgStateOrProvince': site['org_state_or_province'],
+                        'contactName': site['contact_name'],
+                        'contactPhone': site['contact_phone'],
+                        'recruitmentStatusDate': site['recruitment_status_date'],
+                        'orgAddressLine1': site['org_address_line_1'],
+                        'orgAddressLine2': site['org_address_line_2'],
+                        'orgVa': site['org_va'],
+                        'orgTty': site['org_tty'],
+                        'orgFamily': site['org_family'],
+                        'orgPostalCode': site['org_postal_code'],
+                        'contactEmail': site['contact_email'],
+                        'recruitmentStatus': site['recruitment_status'],
+                        'orgCity': site['org_city'],
+                        'orgEmail': site['org_email'],
+                        'orgCountry': site['org_country'],
+                        'orgFax': site['org_fax'],
+                        'orgPhone': site['org_phone'],
+                        'orgName': site['org_name']
+                        }
+    # if 'org_coordinates' in site.keys():
+    #     siteDict['lat'] = site['org_coordinates']['lat']
+    #     siteDict['long'] = site['org_coordinates']['lon']
+    
+    return siteDict
+
+def createBiomarkersDicts(trial:dict, marker:dict) -> List[dict]:
+    parsedBiomarkers = []
+    for name in [*marker['synonyms'], marker['name']]:
+        biomarkerDict = {
+            'nciId': trial['nci_id'],
+            # 'eligibilityCriterion': marker['eligibility_criterion'],
+            # 'inclusionIndicator': marker['inclusion_indicator'],
+            'nciThesaurusConceptId': marker['nci_thesaurus_concept_id'],
+            'name': name,
+            'assayPurpose': marker['assay_purpose']
+        }
+        if 'eligibility_criterion' in marker.keys():
+            biomarkerDict.update({'eligibilityCriterion': marker['eligibility_criterion']})
+        if 'inclusion_indicator' in marker.keys():
+            biomarkerDict.update({'inclusionIndicator': marker['inclusion_indicator']})
+
+        parsedBiomarkers.append(biomarkerDict)
+    return parsedBiomarkers
+
+
+def createDiseasesDicts(trial:dict, disease:dict) -> List[dict]:
+    parsedDiseases = []
+    try:
+        names = [disease['name']]
+        if 'synonyms' in disease.keys():
+            names.extend(disease['synonyms'])
+    except KeyError:
+        logger.error(f'Invalid key for diseases. Possible keys: {disease.keys()}')
+        return parsedDiseases
+
+    for name in names:
+        diseaseDict = {
+            'inclusionIndicator': disease['inclusion_indicator'],
+            'isLeadDisease': disease['is_lead_disease'],
+            'name': name,
+            'nciThesaurusConceptId': disease['nci_thesaurus_concept_id'],
+            'nciId': trial['nci_id']
+        }
+        parsedDiseases.append(diseaseDict)
+    return parsedDiseases
+
+def createArmsDict(trial:dict, arm:dict) -> dict:
+    return {
+        'nciId': trial['nci_id'],
+        'name': arm['name'],
+        'description': arm['description'],
+        'type': arm['type']
+    }
+
+def createInterventionsDicts(trial:dict, arm:dict) -> List[dict]:
+    parsedInterventions = []
+    for intervention in arm['interventions']:
+
+        names = intervention['synonyms']
+        if 'name' in intervention.keys():
+            names.append(intervention['name'])
+        elif 'intervention_name' in intervention.keys():
+            names.append(intervention['intervention_name'])
+
+        for name in names:
+            try:
+                interventionDict = {
+                    'nciId': trial['nci_id'],
+                    'arm': arm['name'],
+                    'type': intervention['intervention_type'],
+                    'inclusionIndicator': intervention['inclusion_indicator'],
+                    'name': name,
+                    'category': intervention['category'],
+                    'nciThesaurusConceptId': intervention['intervention_code'],
+                    'description': intervention['intervention_description']
+                }
+            except KeyError:
+                try:
+                    interventionDict = {
+                        'nciId': trial['nci_id'],
+                        'arm': arm['name'],
+                        'type': intervention['type'],
+                        'inclusionIndicator': intervention['inclusion_indicator'],
+                        'name': name,
+                        'category': intervention['category'],
+                        'nciThesaurusConceptId': intervention['nci_thesaurus_concept_id'],
+                        'description': intervention['description']
+                    }
+                except KeyError as e:
+                    logger.exception(e)
+                    logger.error(f'Invalid intervention keys. Possible keys are: {intervention.keys()}')
+                    continue
+            parsedInterventions.append(interventionDict)
+    return parsedInterventions
+
+def retrieveToCsv():
 
     baseUrl = r'https://clinicaltrialsapi.cancer.gov/api/v2/'
     with open('./nciRetriever/secrets/key.txt') as f:
@@ -31,22 +185,30 @@ def main():
     trialEndpoint = urljoin(baseUrl, 'trials')
     logger.debug(trialEndpoint)
 
-    trialsResponse = requests.get(trialEndpoint, headers=headers)
+    #sending initial request to get the total number of trials
+    trialsResponse = requests.get(trialEndpoint, headers=headers, params={'trial_status': 'OPEN'})
     trialsResponse.raise_for_status()
     trialJson = trialsResponse.json()
     totalNumTrials = trialJson['total']
+    logger.debug(f'Total number of trials: {totalNumTrials}')
 
     start = time.perf_counter()
 
     createdTrialCsv = False
     createdSiteCsv = False
     createdEligibilityCsv = False
+    createdBiomarkerCsv = False
+    createdDiseaseCsv = False
+    createdArmsCsv = False
+    createdInterventionCsv = False
 
     for trialNumFrom in range(0, totalNumTrials, 50):
         sectionStart = time.perf_counter()
+        
+        #creating the dataframes again after every 50 trials to avoid using too much memory
         trialsDf = pd.DataFrame(columns=['protocolId', 
-                                        'NciId', 
-                                        'NctId', 
+                                        'nciId', 
+                                        'nctId', 
                                         'detailDesc', 
                                         'officialTitle', 
                                         'phase', 
@@ -56,12 +218,16 @@ def main():
                                         'activeSitesCount', 
                                         'currentTrialStatus',
                                         'startDate',
+                                        'completionDate',
                                         'maxAgeInYears',
                                         'minAgeInYears',
                                         'gender',
-                                        'acceptsHealthyVolunteers'])
+                                        'acceptsHealthyVolunteers',
+                                        'studySource',
+                                        'studyProtocolType',
+                                        'recordVerificationDate'])
 
-        sitesDf = pd.DataFrame(columns=['protocolId',
+        sitesDf = pd.DataFrame(columns=['nciId',
                                         'orgStateOrProvince',
                                         'contactName',
                                         'contactPhone',
@@ -79,14 +245,49 @@ def main():
                                         'orgCounty',
                                         'orgFax',
                                         'orgPhone',
-                                        'orgName',
-                                        'lat',
-                                        'long'])
-        eligibilityDf = pd.DataFrame(columns=['protocolId',
+                                        'orgName'])
+        eligibilityDf = pd.DataFrame(columns=['nciId',
                                               'inclusionIndicator',
                                               'description'])
+
+        biomarkersDf = pd.DataFrame(columns=[
+            'nciId',
+            'eligibilityCriterion',
+            'inclusionIndicator',
+            'nciThesaurusConceptId',
+            'name',
+            'assayPurpose'
+        ])
+
+        diseasesDf = pd.DataFrame(columns=[
+            'nciId',
+            'inclusionIndicator',
+            'isLeadDisease',
+            'nciThesaurusConceptId',
+            'name'
+        ])
+
+        armsDf = pd.DataFrame(columns=[
+            'nciId',
+            'name',
+            'description',
+            'type'
+        ])
+
+        interventionsDf = pd.DataFrame(columns=[
+            'nciId',
+            'arm',
+            'type',
+            'inclusionIndicator',
+            'name',
+            'category',
+            'nciThesaurusConceptId',
+            'description'
+        ])
+
         payload = {
             'size': 50,
+            'trial_status': 'OPEN',
             'from': trialNumFrom
         }
         
@@ -94,72 +295,61 @@ def main():
         response.raise_for_status()
         sectionJson = response.json()
         
+        trials = []
         for trial in sectionJson['data']:
-            trialDict = {'protocolId': trial['protocol_id'], 
-                                    'NciId': trial['nci_id'], 
-                                    'NctId': trial['nct_id'], 
-                                    'detailDesc': trial['detail_description'], 
-                                    'officialTitle': trial['official_title'], 
-                                    'phase': trial['phase'], 
-                                    'leadOrg': trial['lead_org'], 
-                                    'amendmentDate': trial['amendment_date'], 
-                                    'primaryPurpose': trial['primary_purpose'], 
-                                    'currentTrialStatus': trial['current_trial_status'],
-                                    'startDate': trial['start_date']}
-            if 'active_sites_count' in trial.keys():
-                trialDict.update({'activeSitesCount': trial['active_sites_count']})
-            if 'max_age_in_years' in trial['eligibility']['structured'].keys():
-                trialDict.update({'maxAgeInYears': int(trial['eligibility']['structured']['max_age_in_years'])})
-            if 'min_age_in_years' in trial['eligibility']['structured'].keys():
-                trialDict.update({'minAgeInYears': int(trial['eligibility']['structured']['min_age_in_years'])})
-            if 'gender' in trial['eligibility']['structured'].keys():
-                trialDict.update({'gender': trial['eligibility']['structured']['gender']})
-            if 'accepts_healthy_volunteers' in trial['eligibility']['structured'].keys():
-                trialDict.update({'acceptsHealthyVolunteers': trial['eligibility']['structured']['accepts_healthy_volunteers']})
-            trialDf = pd.DataFrame.from_records([trialDict])
-            trialsDf = pd.concat([trialsDf, trialDf], verify_integrity=True, ignore_index=True)
+            trials.append(createTrialDict(trial))
+
 
             if trial['eligibility']['unstructured'] is not None:
+                #parsing the unstructured eligibility information from the trial
+                eligibilityInfo = []
                 for condition in trial['eligibility']['unstructured']:
-                    eligibilityDict = {
-                        'protocolId': trial['protocol_id'],
+                    eligibilityInfo.append({
+                        'nciId': trial['nci_id'],
                         'inclusionIndicator': condition['inclusion_indicator'],
                         'description': condition['description']
-                    }
-                    conditionDf = pd.DataFrame.from_records([eligibilityDict])
-                    eligibilityDf = pd.concat([eligibilityDf, conditionDf], verify_integrity=True, ignore_index=True)
+                    })
+                conditionDf = pd.DataFrame.from_records(eligibilityInfo)
+                eligibilityDf = pd.concat([eligibilityDf, conditionDf], verify_integrity=True, ignore_index=True)
 
             if trial['sites'] is not None:
-
+                #parsing the sites associated with the trial
+                sites = []
                 for site in trial['sites']:
-                    siteDict = {'protocolId': trial['protocol_id'],
-                                        'orgStateOrProvince': site['org_state_or_province'],
-                                        'contactName': site['contact_name'],
-                                        'contactPhone': site['contact_phone'],
-                                        'recruitmentStatusDate': site['recruitment_status_date'],
-                                        'orgAddressLine1': site['org_address_line_1'],
-                                        'orgAddressLine2': site['org_address_line_2'],
-                                        'orgVa': site['org_va'],
-                                        'orgTty': site['org_tty'],
-                                        'orgFamily': site['org_family'],
-                                        'orgPostalCode': site['org_postal_code'],
-                                        'contactEmail': site['contact_email'],
-                                        'recruitmentStatus': site['recruitment_status'],
-                                        'orgCity': site['org_city'],
-                                        'orgEmail': site['org_email'],
-                                        'orgCountry': site['org_country'],
-                                        'orgFax': site['org_fax'],
-                                        'orgPhone': site['org_phone'],
-                                        'orgName': site['org_name'],
-                                        'lat': None,
-                                        'long': None}
-                    if 'org_coordinates' in site.keys():
-                        siteDict['lat'] = site['org_coordinates']['lat']
-                        siteDict['long'] = site['org_coordinates']['lon']
-                    siteDf = pd.DataFrame.from_records([siteDict])
-                    
-                    sitesDf = pd.concat([sitesDf, siteDf], ignore_index=True, verify_integrity=True)
+                    sites.append(createSiteDict(trial, site))
+                siteDf = pd.DataFrame.from_records(sites)
+                sitesDf = pd.concat([sitesDf, siteDf], ignore_index=True, verify_integrity=True)
+            
+            if trial['biomarkers'] is not None:
+                #parsing the biomarkers associated with the trial
+                biomarkers = []
+                for biomarker in trial['biomarkers']:
+                    biomarkers.extend(createBiomarkersDicts(trial, biomarker))
+                biomarkerDf = pd.DataFrame.from_records(biomarkers)
+                biomarkersDf = pd.concat([biomarkersDf, biomarkerDf], ignore_index=True, verify_integrity=True)
+                
+            if trial['diseases'] is not None:
+                diseases = []
+                for disease in trial['diseases']:
+                    diseases.extend(createDiseasesDicts(trial, disease))
+                diseaseDf = pd.DataFrame.from_records(diseases)
+                diseasesDf = pd.concat([diseasesDf, diseaseDf], ignore_index=True, verify_integrity=True)
 
+            if trial['arms'] is not None:
+                arms = []
+                interventions = []
+                for arm in trial['arms']:
+                    arms.append(createArmsDict(trial, arm))
+                    interventions.extend(createInterventionsDicts(trial, arm))
+                armDf = pd.DataFrame.from_records(arms)
+                armsDf = pd.concat([armsDf, armDf], ignore_index=True, verify_integrity=True)
+                interventionDf = pd.DataFrame.from_records(interventions)
+                interventionsDf = pd.concat([interventionsDf, interventionDf], ignore_index=True, verify_integrity=True)
+
+        trialDf = pd.DataFrame.from_records(trials)
+        trialsDf = pd.concat([trialsDf, trialDf], verify_integrity=True, ignore_index=True)
+
+        #creating and appending the data to csv
         if not createdSiteCsv:
             if os.path.isfile(f'nciSites{today}.csv'):
                 os.remove(f'nciSites{today}.csv')
@@ -183,24 +373,104 @@ def main():
             createdEligibilityCsv = True
         else:
             eligibilityDf.to_csv(f'nciEligibility{today}.csv', index=False, mode='a', header=False)
+        
+        if not createdBiomarkerCsv:
+            if os.path.isfile(f'nciBiomarkers{today}.csv'):
+                os.remove(f'nciBiomarkers{today}.csv')
+            biomarkersDf.to_csv(f'nciBiomarkers{today}.csv', index=False)
+            createdBiomarkerCsv = True
+        else:
+            biomarkersDf.to_csv(f'nciBiomarkers{today}.csv', index=False, mode='a', header=False)
+
+        if not createdDiseaseCsv:
+            if os.path.isfile(f'nciDiseases{today}.csv'):
+                os.remove(f'nciDiseases{today}.csv')
+            diseasesDf.to_csv(f'nciDiseases{today}.csv', index=False)
+            createdDiseaseCsv = True
+        else:
+            diseasesDf.to_csv(f'nciDiseases{today}.csv', index=False, mode='a', header=False)
+
+        if not createdArmsCsv:
+            if os.path.isfile(f'nciArms{today}.csv'):
+                os.remove(f'nciArms{today}.csv')
+            armsDf.to_csv(f'nciArms{today}.csv', index=False)
+            createdArmsCsv = True
+        else:
+            armsDf.to_csv(f'nciArms{today}.csv', index=False, mode='a', header=False)
+
+        if not createdInterventionCsv:
+            if os.path.isfile(f'nciInterventions{today}.csv'):
+                os.remove(f'nciInterventions{today}.csv')
+            interventionsDf.to_csv(f'nciInterventions{today}.csv', index=False)
+            createdInterventionCsv = True
+        else:
+            interventionsDf.to_csv(f'nciInterventions{today}.csv', index=False, mode='a', header=False)
+
 
         sectionElapsed = time.perf_counter()-sectionStart
 
         logger.debug(f'Trials {trialNumFrom}-{trialNumFrom+50} retrieved in {sectionElapsed: .2f}s')
 
+
+        #ensuring that a request isn't sent less than three seconds after the last one. This avoids rate limiting
         if sectionElapsed < 3:
             time.sleep(3-sectionElapsed)
             
             
     elapsed = time.perf_counter() - start
-    logger.debug(f'All data retrieved and saved in {elapsed: .2f}s')
-    logger.debug(sys.getsizeof(trialsDf))
-    logger.debug(sys.getsizeof(sitesDf))
+    logger.debug(f'All {totalNumTrials} trials retrieved and saved in {elapsed: .2f}s')
+    # logger.debug(sys.getsizeof(trialsDf))
+    # logger.debug(sys.getsizeof(sitesDf))
+    # logger.debug
 
     # logger.debug(trialsResponse.json())
     # with open('response.json', 'w') as f:
     #     json.dump(trialJson, f)
 
+def createUniqueSitesCsv(today):
+    logger.debug('Reading sites...')
+    sitesDf = pd.read_csv(f'nciSites{today}.csv')
+    logger.debug('Dropping duplicates and trial-depedent information...')
+    sitesDf.drop_duplicates(subset='orgName', inplace=True) 
+    sitesDf.drop(['recruitmentStatusDate', 'recruitmentStatus'], axis=1, inplace=True)
+    logger.debug('Saving unique sites table')
+    sitesDf.to_csv(f'nciUniqueSites{today}.csv', index=False)
+
+def test():
+    url = r'https://clinicaltrialsapi.cancer.gov/api/v2/organizations'
+
+    with open('./nciRetriever/secrets/key.txt') as f:
+        apiKey = f.read()
+
+    headers = {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json'
+    }
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    pprint(response.json())
+
+    with open('./responseOrg.json', 'w') as f:
+        json.dump(response.json(), f)
+
+def view():
+    trials = pd.read_csv(r'./nciTrials2022-01-07.csv')
+    
+    logger.debug(f'Number of rows: {len(trials.index)}')
+    logger.debug(f'Number of unique protocolId values: {len(trials["protocolId"].unique())}')
+    logger.debug(f'Number of unique nciId values: {len(trials["NciId"].unique())}')
+
+def main():
+    # retrieveToCsv()
+    createUniqueSitesCsv(today)
+    csvToArcgisPro(today)
+    geocodeSites()
+    
+
 if __name__ == '__main__':
+    # retrieveToCsv()
+    # csvToArcgisPro(today)
     main()
-    updateFC(today)
+    # updateFC(today)
+    # test()
+    # view()
