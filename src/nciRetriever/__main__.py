@@ -1,8 +1,12 @@
 import requests
 from typing import List
+import re
 from nciRetriever.updateFC import updateFC
 from nciRetriever.csvToArcgisPro import csvToArcgisPro
 from nciRetriever.geocode import geocodeSites
+from nciRetriever.createRelationships import createRelationships
+from nciRetriever.zipGdb import zip
+from nciRetriever.updateItem import update
 from datetime import date
 import pandas as pd
 import logging
@@ -15,7 +19,7 @@ from pprint import pprint
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', '%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
@@ -124,15 +128,22 @@ def createDiseasesDicts(trial:dict, disease:dict) -> List[dict]:
     return parsedDiseases
 
 def createArmsDict(trial:dict, arm:dict) -> dict:
+    parsedArm = re.sub(r'\(.+\)', '', arm['name'])
+    parsedArm = re.sub(r'\s+', '_', parsedArm.strip())
     return {
         'nciId': trial['nci_id'],
         'name': arm['name'],
+        'nciIdWithName': f'{trial["nci_id"]}_{parsedArm}',
         'description': arm['description'],
         'type': arm['type']
     }
 
 def createInterventionsDicts(trial:dict, arm:dict) -> List[dict]:
     parsedInterventions = []
+
+    parsedArm = re.sub(r'\(.+\)', '', arm['name'])
+    parsedArm = re.sub(r'\s+', '_', parsedArm.strip())
+
     for intervention in arm['interventions']:
 
         names = intervention['synonyms']
@@ -146,6 +157,7 @@ def createInterventionsDicts(trial:dict, arm:dict) -> List[dict]:
                 interventionDict = {
                     'nciId': trial['nci_id'],
                     'arm': arm['name'],
+                    'nciIdWithArm': f'{trial["nci_id"]}_{parsedArm}',
                     'type': intervention['intervention_type'],
                     'inclusionIndicator': intervention['inclusion_indicator'],
                     'name': name,
@@ -158,6 +170,7 @@ def createInterventionsDicts(trial:dict, arm:dict) -> List[dict]:
                     interventionDict = {
                         'nciId': trial['nci_id'],
                         'arm': arm['name'],
+                        'nciIdWithArm': f'{trial["nci_id"]}_{parsedArm}',
                         'type': intervention['type'],
                         'inclusionIndicator': intervention['inclusion_indicator'],
                         'name': name,
@@ -270,6 +283,7 @@ def retrieveToCsv():
         armsDf = pd.DataFrame(columns=[
             'nciId',
             'name',
+            'nciIdWithName',
             'description',
             'type'
         ])
@@ -277,6 +291,7 @@ def retrieveToCsv():
         interventionsDf = pd.DataFrame(columns=[
             'nciId',
             'arm',
+            'nciIdWithArm',
             'type',
             'inclusionIndicator',
             'name',
@@ -461,10 +476,19 @@ def view():
     logger.debug(f'Number of unique nciId values: {len(trials["NciId"].unique())}')
 
 def main():
-    # retrieveToCsv()
+    logger.debug('Starting NCI retrieval process...')
+    start = time.perf_counter()
+
+    retrieveToCsv()
     createUniqueSitesCsv(today)
     csvToArcgisPro(today)
     geocodeSites()
+    createRelationships()
+    zip()
+    update(today)
+
+    elapsed = time.perf_counter() - start
+    logger.debug(f'NCI retrieval process completed in {elapsed: .2f}s')
     
 
 if __name__ == '__main__':
