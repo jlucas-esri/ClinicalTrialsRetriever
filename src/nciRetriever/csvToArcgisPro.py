@@ -24,7 +24,15 @@ def csvToArcgisPro(today:date):
         f'nciBiomarkers{today}.csv',
         f'nciDiseases{today}.csv',
         f'nciArms{today}.csv',
-        f'nciInterventions{today}.csv' 
+        f'nciInterventions{today}.csv',
+        f'nciMainDiseases{today}.csv',
+        f'nciMainBiomarkers{today}.csv',
+        f'nciMainInterventions{today}.csv',
+        f'nciUniqueMainDiseases{today}.csv',
+        f'nciUniqueMainBiomarkers{today}.csv',
+        f'nciUniqueMainInterventions{today}.csv',
+        'DiseaseBiomarkerRelTable.csv',
+        'DiseaseInterventionRelTable.csv' 
     ]
     logger.debug(f'Output gdb: {outGdbLocation}')
     
@@ -32,7 +40,6 @@ def csvToArcgisPro(today:date):
     for csvName in csvNames:
         outTableName, _ = os.path.splitext(csvName)
         outTableName = re.sub(r'[\-0-9]', '', outTableName)
-        logger.debug(f'Csv name: {csvName}')
-        logger.debug(f'Output table name: {outTableName}')
+        logger.debug(f'Importing {csvName} as {outTableName}...')
         arcpy.conversion.TableToTable(csvName, outGdbLocation, outTableName)
 
