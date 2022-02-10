@@ -788,12 +788,12 @@ def main():
     createUniqueInterventionsCsv(today)
     createDiseasesAndBiomarkersRelTable(today, f'nciUniqueMainDiseases{today}.csv', f'MainDiseaseBiomarkerRelTable{today}.csv')
     # createDiseasesAndBiomarkersRelTable(today, f'nciUniqueDiseasesWithoutSynonyms{today}.csv', 'DiseaseBiomarkerRelTable.csv')
-    # createDiseasesAndInterventionsRelTable(today)
+    createDiseasesAndInterventionsRelTable(today)
     csvToArcgisPro(today)
     geocodeSites()
     createRelationships()
     zip()
-    # update(today)
+    update(today)
 
     elapsed = time.perf_counter() - start
     logger.debug(f'NCI retrieval process completed in {elapsed: .2f}s')
