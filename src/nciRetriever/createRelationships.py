@@ -16,9 +16,11 @@ arcpy.env.overwriteOutput = True
 gdb = os.path.join(arcpy.env.workspace, 'NCIClinicalTrialsAPI', 'NCIClinicalTrialsAPI.gdb')
 
 def createRelationships():
-    for destTable in ['nciEligibility', 'nciBiomarkers', 'nciDiseases', 'nciArms']:
-        logger.debug(f'Relating nciTrials and {destTable}...')
-        createOneToManyTrialRelationship(destTable)
+    # for destTable in ['nciEligibility', 'nciBiomarkers', 'nciDiseases', 'nciArms']:
+    #     logger.debug(f'Relating nciTrials and {destTable}...')
+    #     createOneToManyTrialRelationship(destTable)
+    logger.debug(f'Relating nciTrials and nciArms...')
+    createOneToManyTrialRelationship('nciArms')
 
     # logger.debug('Relating nciTrials and nciUniqueSitesGeocoded...')
     # createManyToManySitesTrialsRelationship()
@@ -30,13 +32,16 @@ def createRelationships():
     createManyToManyTableToUniqueTablesRelationship('nciTrials', 'nciUniqueMainBiomarkers', ['nciId', 'nciThesaurusConceptId'], 'nciMainBiomarkers', 'nciId', 'nciId', 'nciThesaurusConceptId', 'nciThesaurusConceptId')
     #joining the trials to unique diseases
     createManyToManyTableToUniqueTablesRelationship('nciTrials', 'nciUniqueMainDiseases', ['nciId', 'nciThesaurusConceptId'], 'nciMainDiseases', 'nciId', 'nciId', 'nciThesaurusConceptId', 'nciThesaurusConceptId')
+    createManyToManyTableToUniqueTablesRelationship('nciTrials', 'nciUniqueSubTypeDiseases', ['nciId', 'nciThesaurusConceptId'], 'nciSubTypeDiseases', 'nciId', 'nciId', 'nciThesaurusConceptId', 'nciThesaurusConceptId')
+    createManyToManyTableToUniqueTablesRelationship('nciTrials', 'nciUniqueDiseasesWithoutSynonyms', ['nciId', 'nciThesaurusConceptId'], 'nciDiseasesWithoutSynonyms', 'nciId', 'nciId', 'nciThesaurusConceptId', 'nciThesaurusConceptId')
 
     logger.debug('Relating nciArms and nciInterventions...')
-    createOneToManyArmsRelationship()
+    # createOneToManyArmsRelationship()
     createManyToManyTableToUniqueTablesRelationship('nciArms', 'nciUniqueMainInterventions', ['nciIdWithArm', 'nciThesaurusConceptId'], 'nciMainInterventions', 'nciIdWithName', 'nciIdWithArm', 'nciThesaurusConceptId', 'nciThesaurusConceptId')
 
     logger.debug('Relating nciUniqueMainDiseases with biomarkers and interventions...')
-    createManyToManyTableToUniqueTablesRelationship('nciUniqueMainDiseases', 'nciUniqueMainBiomarkers', ['diseaseNciThesaurusConceptId', 'biomarkerNciThesaurusConceptId'], 'DiseaseBiomarkerRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'biomarkerNciThesaurusConceptId')
+    createManyToManyTableToUniqueTablesRelationship('nciUniqueMainDiseases', 'nciUniqueMainBiomarkers', ['diseaseNciThesaurusConceptId', 'biomarkerNciThesaurusConceptId'], 'MainDiseaseBiomarkerRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'biomarkerNciThesaurusConceptId')
+    createManyToManyTableToUniqueTablesRelationship('nciUniqueDiseasesWithoutSynonyms', 'nciUniqueMainBiomarkers', ['diseaseNciThesaurusConceptId', 'biomarkerNciThesaurusConceptId'], 'DiseaseBiomarkerRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'biomarkerNciThesaurusConceptId')
     createManyToManyTableToUniqueTablesRelationship('nciUniqueMainDiseases', 'nciUniqueMainInterventions', ['diseaseNciThesaurusConceptId', 'interventionNciThesaurusConceptId'], 'DiseaseInterventionRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'interventionNciThesaurusConceptId')
 
 def createOneToManyTrialRelationship(destTable:str):

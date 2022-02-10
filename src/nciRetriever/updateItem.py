@@ -17,10 +17,14 @@ def update(today:date):
 
     logger.debug('Getting and overwriting item...')
     start = time.perf_counter()
+    
+    with open(r'nciRetriever/secrets/itemId.txt') as f:
+        itemId = f.read()
 
-    nciGdbItem = gis.content.get('1eb1a8308bf9419690731a4e92b45994')
+    nciGdbItem = gis.content.get(itemId)
     nciGdbItem.update(item_properties={'description': f'NCI Clinical Trials API Data as of {today}'}, data=newGdbZip)
     nciGdbItem.publish(overwrite=True)
+    nciGdbItem.share(everyone=True)
 
     elapsed = time.perf_counter() - start
     logger.debug(f'Item overwritten in {elapsed: .2f}s')

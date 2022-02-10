@@ -32,6 +32,8 @@ def createTrialDict(trial: dict) -> dict:
                 'nctId': trial['nct_id'], 
                 'detailDesc': trial['detail_description'], 
                 'officialTitle': trial['official_title'], 
+                'briefTitle': trial['brief_title'],
+                'briefDesc': trial['brief_summary'],
                 'phase': trial['phase'], 
                 'leadOrg': trial['lead_org'], 
                 'amendmentDate': trial['amendment_date'], 
@@ -138,7 +140,7 @@ def createDiseasesDicts(trial:dict, disease:dict) -> List[dict]:
         parsedDiseases.append(diseaseDict)
     return parsedDiseases
 
-def createMainDiseasesDict(trial:dict, disease:dict) -> dict:
+def createDiseasesWithoutSynonymsDict(trial:dict, disease:dict) -> dict:
     try:
         return {
             'nciId': trial['nci_id'],
@@ -150,6 +152,40 @@ def createMainDiseasesDict(trial:dict, disease:dict) -> dict:
     except KeyError:
         logger.error('Invalid key for main diseases. Not adding to list...')
         return {}
+    
+
+def createMainDiseasesDict(trial:dict, disease:dict) -> dict:
+    if 'maintype' not in disease['type']:
+        return {}
+
+    try:
+        return {
+            'nciId': trial['nci_id'],
+            'name': disease['name'],
+            'isLeadDisease': disease['is_lead_disease'],
+            'nciThesaurusConceptId': disease['nci_thesaurus_concept_id'],
+            'inclusionIndicator': disease['inclusion_indicator']
+        }   
+    except KeyError:
+        logger.error('Invalid key for main diseases. Not adding to list...')
+        return {}
+
+def createSubTypeDiseasesDict(trial:dict, disease:dict) -> dict:
+    if 'subtype' not in disease['type']:
+        return {}
+
+    try:
+        return {
+            'nciId': trial['nci_id'],
+            'name': disease['name'],
+            'isLeadDisease': disease['is_lead_disease'],
+            'nciThesaurusConceptId': disease['nci_thesaurus_concept_id'],
+            'inclusionIndicator': disease['inclusion_indicator']
+        }   
+    except KeyError:
+        logger.error('Invalid key for main diseases. Not adding to list...')
+        return {}
+
 
 def createArmsDict(trial:dict, arm:dict) -> dict:
     parsedArm = re.sub(r'\(.+\)', '', arm['name'])
@@ -277,7 +313,9 @@ def retrieveToCsv():
     createdBiomarkerCsv = False
     createdMainBiomarkerCsv = False
     createdDiseaseCsv = False
+    createdDiseaseWithoutSynonymsCsv = False
     createdMainDiseaseCsv = False
+    createdSubTypeDiseaseCsv = False
     createdArmsCsv = False
     createdInterventionCsv = False
     createdMainInterventionCsv = False
@@ -291,6 +329,8 @@ def retrieveToCsv():
                                         'nctId', 
                                         'detailDesc', 
                                         'officialTitle', 
+                                        'briefTitle',
+                                        'briefDesc',
                                         'phase', 
                                         'leadOrg', 
                                         'amendmentDate', 
@@ -357,6 +397,22 @@ def retrieveToCsv():
         ])
 
         mainDiseasesDf = pd.DataFrame(columns=[
+            'nciId',
+            'inclusionIndicator',
+            'isLeadDisease',
+            'nciThesaurusConceptId',
+            'name'
+        ])
+
+        diseasesWithoutSynonymsDf = pd.DataFrame(columns=[
+            'nciId',
+            'inclusionIndicator',
+            'isLeadDisease',
+            'nciThesaurusConceptId',
+            'name'
+        ])
+
+        subTypeDiseasesDf = pd.DataFrame(columns=[
             'nciId',
             'inclusionIndicator',
             'isLeadDisease',
@@ -437,7 +493,11 @@ def retrieveToCsv():
                 mainBiomarkers = []
                 for biomarker in trial['biomarkers']:
                     biomarkers.extend(createBiomarkersDicts(trial, biomarker))
-                    mainBiomarkers.append(createMainBiomarkersDict(trial, biomarker))
+
+                    mainBiomarkersDict = createMainBiomarkersDict(trial, biomarker)
+                    if mainBiomarkersDict != {}:
+                        mainBiomarkers.append(mainBiomarkersDict)
+
                 biomarkerDf = pd.DataFrame.from_records(biomarkers)
                 biomarkersDf = pd.concat([biomarkersDf, biomarkerDf], ignore_index=True, verify_integrity=True)
                 mainBiomarkerDf = pd.DataFrame.from_records(mainBiomarkers)
@@ -446,14 +506,32 @@ def retrieveToCsv():
             if trial['diseases'] is not None:
                 diseases = []
                 mainDiseases = []
+                subTypeDiseases = []
+                diseasesWithoutSynonyms = []
                 for disease in trial['diseases']:
-                    diseases.extend(createDiseasesDicts(trial, disease))
-                    mainDiseases.append(createMainDiseasesDict(trial, disease))
+                    diseasesDicts = createDiseasesDicts(trial, disease)
+                    diseases.extend(diseasesDicts)
+                    mainDiseasesDict = createMainDiseasesDict(trial, disease)
+                    if mainDiseasesDict != {}:
+                        mainDiseases.append(mainDiseasesDict)
+                    subTypeDiseasesDict = createSubTypeDiseasesDict(trial, disease)
+                    if subTypeDiseasesDict != {}:
+                        subTypeDiseases.append(subTypeDiseasesDict)
+                    diseasesWithoutSynonymsDict = createDiseasesWithoutSynonymsDict(trial, disease)
+                    if diseasesWithoutSynonymsDict != {}:
+                        diseasesWithoutSynonyms.append(diseasesWithoutSynonymsDict)
+
                 diseaseDf = pd.DataFrame.from_records(diseases)
                 diseasesDf = pd.concat([diseasesDf, diseaseDf], ignore_index=True, verify_integrity=True)
 
                 mainDiseaseDf = pd.DataFrame.from_records(mainDiseases)
                 mainDiseasesDf = pd.concat([mainDiseasesDf, mainDiseaseDf], ignore_index=True, verify_integrity=True)
+
+                subTypeDiseaseDf = pd.DataFrame.from_records(subTypeDiseases)
+                subTypeDiseasesDf = pd.concat([subTypeDiseasesDf, subTypeDiseaseDf], ignore_index=True, verify_integrity=True)
+
+                diseaseWithoutSynonymsDf = pd.DataFrame.from_records(diseasesWithoutSynonyms)
+                diseasesWithoutSynonymsDf = pd.concat([diseasesWithoutSynonymsDf, diseaseWithoutSynonymsDf], ignore_index=True, verify_integrity=True)
 
             if trial['arms'] is not None:
                 arms = []
@@ -474,85 +552,44 @@ def retrieveToCsv():
         trialsDf = pd.concat([trialsDf, trialDf], verify_integrity=True, ignore_index=True)
 
         #creating and appending the data to csv
-        if not createdSiteCsv:
-            if os.path.isfile(f'nciSites{today}.csv'):
-                os.remove(f'nciSites{today}.csv')
-            sitesDf.to_csv(f'nciSites{today}.csv', index=False)
-            createdSiteCsv = True
-        else:
-            sitesDf.to_csv(f'nciSites{today}.csv', index=False, mode='a', header=False)
-        
-        if not createdTrialCsv:
-            if os.path.isfile(f'nciTrials{today}.csv'):
-                os.remove(f'nciTrials{today}.csv')
-            trialsDf.to_csv(f'nciTrials{today}.csv', index=False)
-            createdTrialCsv = True
-        else:
-            trialsDf.to_csv(f'nciTrials{today}.csv', index=False, mode='a', header=False)
+        def createAndAddToCsv(createdBoolean:bool, df:pd.DataFrame, fileName:str):
+            if not createdBoolean:
+                if os.path.isfile(fileName):
+                    os.remove(fileName)
+                df.to_csv(fileName, index=False)
+                createdBoolean = True
+            else:
+                df.to_csv(fileName, index=False, mode='a', header=False)
+            return createdBoolean
 
-        if not createdEligibilityCsv:
-            if os.path.isfile(f'nciEligibility{today}.csv'):
-                os.remove(f'nciEligibility{today}.csv')
-            eligibilityDf.to_csv(f'nciEligibility{today}.csv', index=False)
-            createdEligibilityCsv = True
-        else:
-            eligibilityDf.to_csv(f'nciEligibility{today}.csv', index=False, mode='a', header=False)
-        
-        if not createdBiomarkerCsv:
-            if os.path.isfile(f'nciBiomarkers{today}.csv'):
-                os.remove(f'nciBiomarkers{today}.csv')
-            biomarkersDf.to_csv(f'nciBiomarkers{today}.csv', index=False)
-            createdBiomarkerCsv = True
-        else:
-            biomarkersDf.to_csv(f'nciBiomarkers{today}.csv', index=False, mode='a', header=False)
+        createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
+        createdTrialCsv = createAndAddToCsv(createdTrialCsv, trialsDf, f'nciTrials{today}.csv')
+        createdEligibilityCsv = createAndAddToCsv(createdEligibilityCsv, eligibilityDf, f'nciEligibility{today}.csv')
+        createdBiomarkerCsv = createAndAddToCsv(createdBiomarkerCsv, biomarkersDf, f'nciBiomarkers{today}.csv')
 
-        if not createdMainBiomarkerCsv:
-            if os.path.isfile(f'nciMainBiomarkers{today}.csv'):
-                os.remove(f'nciMainBiomarkers{today}.csv')
-            mainBiomarkersDf.to_csv(f'nciMainBiomarkers{today}.csv', index=False)
-            createdMainBiomarkerCsv = True
-        else:
-            mainBiomarkersDf.to_csv(f'nciMainBiomarkers{today}.csv', index=False, mode='a', header=False)
+        mainBiomarkersDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
+        createdMainBiomarkerCsv = createAndAddToCsv(createdMainBiomarkerCsv, mainBiomarkersDf, f'nciMainBiomarkers{today}.csv')
 
-        if not createdDiseaseCsv:
-            if os.path.isfile(f'nciDiseases{today}.csv'):
-                os.remove(f'nciDiseases{today}.csv')
-            diseasesDf.to_csv(f'nciDiseases{today}.csv', index=False)
-            createdDiseaseCsv = True
-        else:
-            diseasesDf.to_csv(f'nciDiseases{today}.csv', index=False, mode='a', header=False)
+        createdDiseaseCsv = createAndAddToCsv(createdDiseaseCsv, diseasesDf, f'nciDiseases{today}.csv')
 
-        if not createdMainDiseaseCsv:
-            if os.path.isfile(f'nciMainDiseases{today}.csv'):
-                os.remove(f'nciMainDiseases{today}.csv')
-            mainDiseasesDf.to_csv(f'nciMainDiseases{today}.csv', index=False)
-            createdMainDiseaseCsv = True
-        else:
-            mainDiseasesDf.to_csv(f'nciMainDiseases{today}.csv', index=False, mode='a', header=False)
+        diseasesWithoutSynonymsDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
+        createdDiseaseWithoutSynonymsCsv = createAndAddToCsv(createdDiseaseWithoutSynonymsCsv, diseasesWithoutSynonymsDf, f'nciDiseasesWithoutSynonyms{today}.csv')
 
-        if not createdArmsCsv:
-            if os.path.isfile(f'nciArms{today}.csv'):
-                os.remove(f'nciArms{today}.csv')
-            armsDf.to_csv(f'nciArms{today}.csv', index=False)
-            createdArmsCsv = True
-        else:
-            armsDf.to_csv(f'nciArms{today}.csv', index=False, mode='a', header=False)
+        mainDiseasesDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
+        createdMainDiseaseCsv = createAndAddToCsv(createdMainDiseaseCsv, mainDiseasesDf, f'nciMainDiseases{today}.csv')
 
-        if not createdInterventionCsv:
-            if os.path.isfile(f'nciInterventions{today}.csv'):
-                os.remove(f'nciInterventions{today}.csv')
-            interventionsDf.to_csv(f'nciInterventions{today}.csv', index=False)
-            createdInterventionCsv = True
-        else:
-            interventionsDf.to_csv(f'nciInterventions{today}.csv', index=False, mode='a', header=False)
+        subTypeDiseasesDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
+        createdSubTypeDiseaseCsv = createAndAddToCsv(createdSubTypeDiseaseCsv, subTypeDiseasesDf, f'nciSubTypeDiseases{today}.csv')
 
-        if not createdMainInterventionCsv:
-            if os.path.isfile(f'nciMainInterventions{today}.csv'):
-                os.remove(f'nciMainInterventions{today}.csv')
-            mainInterventionsDf.to_csv(f'nciMainInterventions{today}.csv', index=False)
-            createdMainInterventionCsv = True
-        else:
-            mainInterventionsDf.to_csv(f'nciMainInterventions{today}.csv', index=False, mode='a', header=False)
+        createdArmsCsv = createAndAddToCsv(createdArmsCsv, armsDf, f'nciArms{today}.csv')
+        createdInterventionsCsv = createAndAddToCsv(createdInterventionCsv, interventionsDf, f'nciInterventions{today}.csv')
+
+        mainInterventionsDf.drop_duplicates(['nciIdWithArm', 'nciThesaurusConceptId'], inplace=True)
+        createdMainInterventionsCsv = createAndAddToCsv(createdMainInterventionCsv, mainInterventionsDf, f'nciMainInterventions{today}.csv')
+        # createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
+        # createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
+        # createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
+
 
         sectionElapsed = time.perf_counter()-sectionStart
 
@@ -583,14 +620,35 @@ def createUniqueSitesCsv(today):
     logger.debug('Saving unique sites table...')
     sitesDf.to_csv(f'nciUniqueSites{today}.csv', index=False)
 
-def createUniqueDiseasesCsv(today):
+def createUniqueDiseasesWithoutSynonymsCsv(today):
+    logger.debug('Reading diseases without synonyms...')
+    diseasesWithoutSynonymsDf = pd.read_csv(f'nciDiseasesWithoutSynonyms{today}.csv')
+    logger.debug('Dropping duplicates and trial-dependent information...')
+    diseasesWithoutSynonymsDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
+    diseasesWithoutSynonymsDf.drop(['isLeadDisease', 'inclusionIndicator', 'nciId'], axis=1, inplace=True)
+    diseasesWithoutSynonymsDf.dropna()
+    logger.debug('Saving unique diseases table...')
+    diseasesWithoutSynonymsDf.to_csv(f'nciUniqueDiseasesWithoutSynonyms{today}.csv', index=False)
+
+def createUniqueMainDiseasesCsv(today):
     logger.debug('Reading main diseases...')
     mainDiseasesDf = pd.read_csv(f'nciMainDiseases{today}.csv')
     logger.debug('Dropping duplicates and trial-dependent information...')
     mainDiseasesDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
     mainDiseasesDf.drop(['isLeadDisease', 'inclusionIndicator', 'nciId'], axis=1, inplace=True)
+    mainDiseasesDf.dropna()
     logger.debug('Saving unique diseases table...')
     mainDiseasesDf.to_csv(f'nciUniqueMainDiseases{today}.csv', index=False)
+
+def createUniqueSubTypeDiseasesCsv(today):
+    logger.debug('Reading main diseases...')
+    subTypeDiseasesDf = pd.read_csv(f'nciSubTypeDiseases{today}.csv')
+    logger.debug('Dropping duplicates and trial-dependent information...')
+    subTypeDiseasesDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
+    subTypeDiseasesDf.drop(['isLeadDisease', 'inclusionIndicator', 'nciId'], axis=1, inplace=True)
+    subTypeDiseasesDf.dropna()
+    logger.debug('Saving unique diseases table...')
+    subTypeDiseasesDf.to_csv(f'nciUniqueSubTypeDiseases{today}.csv', index=False)
 
 def createUniqueBiomarkersCsv(today):
     logger.debug('Reading main biomarkers...')
@@ -598,6 +656,7 @@ def createUniqueBiomarkersCsv(today):
     logger.debug('Dropping duplicates and trial-dependent information...')
     mainBiomarkersDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
     mainBiomarkersDf.drop(['eligibilityCriterion', 'inclusionIndicator', 'assayPurpose', 'nciId'], axis=1, inplace=True)
+    mainBiomarkersDf.dropna()
     logger.debug('Saving unique biomarkers table...')
     mainBiomarkersDf.to_csv(f'nciUniqueMainBiomarkers{today}.csv', index=False)
 
@@ -607,10 +666,11 @@ def createUniqueInterventionsCsv(today):
     logger.debug('Dropping duplicates and trial-dependent information...')
     mainInterventionsDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
     mainInterventionsDf.drop(['nciId', 'inclusionIndicator'], axis=1, inplace=True)
+    mainInterventionsDf.dropna()
     logger.debug('Saving unique interventions table...')
     mainInterventionsDf.to_csv(f'nciUniqueMainInterventions{today}.csv', index=False)
 
-def createDiseasesAndBiomarkersRelTable(today):
+def createDiseasesAndBiomarkersRelTable(today, inputCsv:str, outputCsv:str):
     logger.debug('Creating diseases and biomarkers relationship...')
     url = r'https://clinicaltrialsapi.cancer.gov/api/v2/biomarkers'
 
@@ -622,8 +682,8 @@ def createDiseasesAndBiomarkersRelTable(today):
         'Content-Type': 'application/json'
     }
 
-    logger.debug('Reading unique main diseases...')
-    mainDiseasesDf = pd.read_csv(f'nciUniqueMainDiseases{today}.csv')
+    logger.debug('Reading unique diseases...')
+    mainDiseasesDf = pd.read_csv(inputCsv)
 
     diseaseBiomarkerRelDicts = []
     logger.debug('Starting requests...')
@@ -647,7 +707,7 @@ def createDiseasesAndBiomarkersRelTable(today):
 
     diseaseBiomarkerRelDf = pd.DataFrame.from_records(diseaseBiomarkerRelDicts)
     diseaseBiomarkerRelDf.drop_duplicates(inplace=True)
-    diseaseBiomarkerRelDf.to_csv(f'DiseaseBiomarkerRelTable.csv', index=False)
+    diseaseBiomarkerRelDf.to_csv(outputCsv, index=False)
 
 def createDiseasesAndInterventionsRelTable(today):
     logger.debug('Creating diseases and interventions relationship...')
@@ -691,7 +751,7 @@ def createDiseasesAndInterventionsRelTable(today):
 
 
 def test():
-    url = r'https://clinicaltrialsapi.cancer.gov/api/v2/biomarkers'
+    url = r'https://clinicaltrialsapi.cancer.gov/api/v2/trials'
 
     with open('./nciRetriever/secrets/key.txt') as f:
         apiKey = f.read()
@@ -701,14 +761,11 @@ def test():
         'Content-Type': 'application/json'
     }
 
-    payload = {
-        'maintype': 'C133254'
-    }
-    response = requests.get(url, headers=headers, params=payload)
+    response = requests.get(url, headers=headers)
     response.raise_for_status()
-    pprint(response.json())
+    # pprint(response.json())
 
-    with open('./responseBiomarker.json', 'w') as f:
+    with open('./response.json', 'w') as f:
         json.dump(response.json(), f)
 
 def view():
@@ -725,15 +782,18 @@ def main():
     retrieveToCsv()
     createUniqueSitesCsv(today)
     createUniqueBiomarkersCsv(today)
-    createUniqueDiseasesCsv(today)
+    createUniqueDiseasesWithoutSynonymsCsv(today)
+    createUniqueMainDiseasesCsv(today)
+    createUniqueSubTypeDiseasesCsv(today)
     createUniqueInterventionsCsv(today)
-    # createDiseasesAndBiomarkersRelTable(today)
+    createDiseasesAndBiomarkersRelTable(today, f'nciUniqueMainDiseases{today}.csv', f'MainDiseaseBiomarkerRelTable{today}.csv')
+    # createDiseasesAndBiomarkersRelTable(today, f'nciUniqueDiseasesWithoutSynonyms{today}.csv', 'DiseaseBiomarkerRelTable.csv')
     # createDiseasesAndInterventionsRelTable(today)
     csvToArcgisPro(today)
     geocodeSites()
     createRelationships()
     zip()
-    update(today)
+    # update(today)
 
     elapsed = time.perf_counter() - start
     logger.debug(f'NCI retrieval process completed in {elapsed: .2f}s')
