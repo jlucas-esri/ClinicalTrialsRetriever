@@ -155,6 +155,8 @@ def createDiseasesWithoutSynonymsDict(trial:dict, disease:dict) -> dict:
     
 
 def createMainDiseasesDict(trial:dict, disease:dict) -> dict:
+    if 'type' not in disease.keys():
+        return {}
     if 'maintype' not in disease['type']:
         return {}
 
@@ -171,6 +173,8 @@ def createMainDiseasesDict(trial:dict, disease:dict) -> dict:
         return {}
 
 def createSubTypeDiseasesDict(trial:dict, disease:dict) -> dict:
+    if 'type' not in disease.keys():
+        return {}
     if 'subtype' not in disease['type']:
         return {}
 
