@@ -5,7 +5,7 @@ from nciRetriever.updateFC import updateFC
 from nciRetriever.csvToArcgisPro import csvToArcgisPro
 from nciRetriever.geocode import geocodeSites
 from nciRetriever.createRelationships import createRelationships
-from nciRetriever.zipGdb import zip
+from nciRetriever.zipGdb import zipGdb
 from nciRetriever.updateItem import update
 from datetime import date
 import pandas as pd
@@ -25,6 +25,11 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 today = date.today()
+
+# nciThesaurus = pd.read_csv('thesaurus.csv')
+uniqueMainDiseasesDf = pd.read_csv('nciUniqueMainDiseasesReference.csv')
+uniqueSubTypeDiseasesDf = pd.read_csv('nciUniqueSubTypeDiseasesReference.csv')
+uniqueDiseasesWithoutSynonymsDf = pd.read_csv('nciUniqueDiseasesWithoutSynonymsReference.csv')
 
 def createTrialDict(trial: dict) -> dict:
     trialDict = {'nciId': trial['nci_id'], 
@@ -141,6 +146,23 @@ def createDiseasesDicts(trial:dict, disease:dict) -> List[dict]:
     return parsedDiseases
 
 def createDiseasesWithoutSynonymsDict(trial:dict, disease:dict) -> dict:
+    # diseaseDict = {
+    #     'nciId': trial['nci_id'],
+    #     'inclusionIndicator': disease['inclusion_indicator'],
+    #     'isLeadDisease': disease['is_lead_disease'],
+    #     'nciThesaurusConceptId': disease['nci_thesaurus_concept_id']
+    # }
+    # correctDisease = uniqueDiseasesWithoutSynonymsDf.loc[uniqueDiseasesWithoutSynonymsDf['nciThesaurusConceptId'] == disease['nci_thesaurus_concept_id']] 
+    # if correctDisease.empty:
+    #     logger.error('Disease not found in full reference. Aborting insertion...')
+    #     return {}
+    # # logger.debug(correctDisease['name'].values[0])
+    # # time.sleep(2)
+    # diseaseDict.update({
+    #     'name': correctDisease['name'].values[0]
+    # })
+    # return diseaseDict
+
     try:
         return {
             'nciId': trial['nci_id'],
@@ -155,8 +177,22 @@ def createDiseasesWithoutSynonymsDict(trial:dict, disease:dict) -> dict:
     
 
 def createMainDiseasesDict(trial:dict, disease:dict) -> dict:
-    if 'type' not in disease.keys():
-        return {}
+    # diseaseDict = {
+    #     'nciId': trial['nci_id'],
+    #     'inclusionIndicator': disease['inclusion_indicator'],
+    #     'isLeadDisease': disease['is_lead_disease'],
+    #     'nciThesaurusConceptId': disease['nci_thesaurus_concept_id']
+    # }
+    # correctDisease = uniqueMainDiseasesDf.loc[uniqueMainDiseasesDf['nciThesaurusConceptId'] == disease['nci_thesaurus_concept_id']] 
+    # if correctDisease.empty:
+    #     return {}
+
+    # diseaseDict.update({
+    #     'name': correctDisease['name'].values[0]
+    # })
+    # return diseaseDict
+    # if 'type' not in disease.keys():
+    #     return {}
     if 'maintype' not in disease['type']:
         return {}
 
@@ -173,8 +209,22 @@ def createMainDiseasesDict(trial:dict, disease:dict) -> dict:
         return {}
 
 def createSubTypeDiseasesDict(trial:dict, disease:dict) -> dict:
-    if 'type' not in disease.keys():
-        return {}
+    # diseaseDict = {
+    #     'nciId': trial['nci_id'],
+    #     'inclusionIndicator': disease['inclusion_indicator'],
+    #     'isLeadDisease': disease['is_lead_disease'],
+    #     'nciThesaurusConceptId': disease['nci_thesaurus_concept_id']
+    # }
+    # correctDisease = uniqueSubTypeDiseasesDf.loc[uniqueSubTypeDiseasesDf['nciThesaurusConceptId'] == disease['nci_thesaurus_concept_id']] 
+    # if correctDisease.empty:
+    #     return {}
+
+    # diseaseDict.update({
+    #     'name': correctDisease['name'].values[0]
+    # })
+    # return diseaseDict
+    # if 'type' not in disease.keys():
+    #     return {}
     if 'subtype' not in disease['type']:
         return {}
 
@@ -187,7 +237,7 @@ def createSubTypeDiseasesDict(trial:dict, disease:dict) -> dict:
             'inclusionIndicator': disease['inclusion_indicator']
         }   
     except KeyError:
-        logger.error('Invalid key for main diseases. Not adding to list...')
+        logger.error('Invalid key for subtype diseases. Not adding to list...')
         return {}
 
 
@@ -290,6 +340,7 @@ def createMainInterventionDicts(trial:dict, arm:dict) -> List[dict]:
 
 
 def retrieveToCsv():
+
 
     baseUrl = r'https://clinicaltrialsapi.cancer.gov/api/v2/'
     with open('./nciRetriever/secrets/key.txt') as f:
@@ -508,13 +559,13 @@ def retrieveToCsv():
                 mainBiomarkersDf = pd.concat([mainBiomarkersDf, mainBiomarkerDf], ignore_index=True, verify_integrity=True)
                 
             if trial['diseases'] is not None:
-                diseases = []
+                # diseases = []
                 mainDiseases = []
                 subTypeDiseases = []
                 diseasesWithoutSynonyms = []
                 for disease in trial['diseases']:
-                    diseasesDicts = createDiseasesDicts(trial, disease)
-                    diseases.extend(diseasesDicts)
+                    # diseasesDicts = createDiseasesDicts(trial, disease)
+                    # diseases.extend(diseasesDicts)
                     mainDiseasesDict = createMainDiseasesDict(trial, disease)
                     if mainDiseasesDict != {}:
                         mainDiseases.append(mainDiseasesDict)
@@ -525,8 +576,8 @@ def retrieveToCsv():
                     if diseasesWithoutSynonymsDict != {}:
                         diseasesWithoutSynonyms.append(diseasesWithoutSynonymsDict)
 
-                diseaseDf = pd.DataFrame.from_records(diseases)
-                diseasesDf = pd.concat([diseasesDf, diseaseDf], ignore_index=True, verify_integrity=True)
+                # diseaseDf = pd.DataFrame.from_records(diseases)
+                # diseasesDf = pd.concat([diseasesDf, diseaseDf], ignore_index=True, verify_integrity=True)
 
                 mainDiseaseDf = pd.DataFrame.from_records(mainDiseases)
                 mainDiseasesDf = pd.concat([mainDiseasesDf, mainDiseaseDf], ignore_index=True, verify_integrity=True)
@@ -569,12 +620,12 @@ def retrieveToCsv():
         createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
         createdTrialCsv = createAndAddToCsv(createdTrialCsv, trialsDf, f'nciTrials{today}.csv')
         createdEligibilityCsv = createAndAddToCsv(createdEligibilityCsv, eligibilityDf, f'nciEligibility{today}.csv')
-        createdBiomarkerCsv = createAndAddToCsv(createdBiomarkerCsv, biomarkersDf, f'nciBiomarkers{today}.csv')
+        # createdBiomarkerCsv = createAndAddToCsv(createdBiomarkerCsv, biomarkersDf, f'nciBiomarkers{today}.csv')
 
         mainBiomarkersDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
         createdMainBiomarkerCsv = createAndAddToCsv(createdMainBiomarkerCsv, mainBiomarkersDf, f'nciMainBiomarkers{today}.csv')
 
-        createdDiseaseCsv = createAndAddToCsv(createdDiseaseCsv, diseasesDf, f'nciDiseases{today}.csv')
+        # createdDiseaseCsv = createAndAddToCsv(createdDiseaseCsv, diseasesDf, f'nciDiseases{today}.csv')
 
         diseasesWithoutSynonymsDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
         createdDiseaseWithoutSynonymsCsv = createAndAddToCsv(createdDiseaseWithoutSynonymsCsv, diseasesWithoutSynonymsDf, f'nciDiseasesWithoutSynonyms{today}.csv')
@@ -586,10 +637,10 @@ def retrieveToCsv():
         createdSubTypeDiseaseCsv = createAndAddToCsv(createdSubTypeDiseaseCsv, subTypeDiseasesDf, f'nciSubTypeDiseases{today}.csv')
 
         createdArmsCsv = createAndAddToCsv(createdArmsCsv, armsDf, f'nciArms{today}.csv')
-        createdInterventionsCsv = createAndAddToCsv(createdInterventionCsv, interventionsDf, f'nciInterventions{today}.csv')
+        # createdInterventionCsv = createAndAddToCsv(createdInterventionCsv, interventionsDf, f'nciInterventions{today}.csv')
 
         mainInterventionsDf.drop_duplicates(['nciIdWithArm', 'nciThesaurusConceptId'], inplace=True)
-        createdMainInterventionsCsv = createAndAddToCsv(createdMainInterventionCsv, mainInterventionsDf, f'nciMainInterventions{today}.csv')
+        createdMainInterventionCsv = createAndAddToCsv(createdMainInterventionCsv, mainInterventionsDf, f'nciMainInterventions{today}.csv')
         # createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
         # createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
         # createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
@@ -796,11 +847,23 @@ def main():
     csvToArcgisPro(today)
     geocodeSites()
     createRelationships()
-    zip()
-    update(today)
+    zipGdb()
+    # update(today)
 
     elapsed = time.perf_counter() - start
     logger.debug(f'NCI retrieval process completed in {elapsed: .2f}s')
+
+def testThesaurus():
+
+    thesaurus = pd.read_csv('./thesaurus.csv')
+    # print(thesaurus.head(10))
+    print(thesaurus['type'].unique())
+
+def editThesaurus():
+    thesaurus = pd.read_csv('./Thesaurus.txt', delimiter='\t')
+    thesaurus.rename(columns={oldName: newName for oldName, newName in zip(thesaurus.columns, ['code', 'concept', 'parents', 'synonyms', 'definition', 'name', 'conceptStatus', 'type'])}, inplace=True)
+    thesaurus.to_csv('thesaurus.csv', index=False)
+
     
 
 if __name__ == '__main__':
@@ -809,4 +872,6 @@ if __name__ == '__main__':
     main()
     # updateFC(today)
     # test()
+    # editThesaurus()
+    # testThesaurus()
     # view()

@@ -15,7 +15,7 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
-def zip() -> str:
+def zipGdb() -> str:
     # shutil.make_archive(os.path.basename(gdb), 'zip', gdb)
     logger.debug('Zipping Gdb...')
     start = time.perf_counter()
