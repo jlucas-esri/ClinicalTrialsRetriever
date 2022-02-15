@@ -27,9 +27,9 @@ logger.setLevel(logging.DEBUG)
 today = date.today()
 
 # nciThesaurus = pd.read_csv('thesaurus.csv')
-uniqueMainDiseasesDf = pd.read_csv('nciUniqueMainDiseasesReference.csv')
-uniqueSubTypeDiseasesDf = pd.read_csv('nciUniqueSubTypeDiseasesReference.csv')
-uniqueDiseasesWithoutSynonymsDf = pd.read_csv('nciUniqueDiseasesWithoutSynonymsReference.csv')
+# uniqueMainDiseasesDf = pd.read_csv('nciUniqueMainDiseasesReference.csv')
+# uniqueSubTypeDiseasesDf = pd.read_csv('nciUniqueSubTypeDiseasesReference.csv')
+# uniqueDiseasesWithoutSynonymsDf = pd.read_csv('nciUniqueDiseasesWithoutSynonymsReference.csv')
 
 def createTrialDict(trial: dict) -> dict:
     trialDict = {'nciId': trial['nci_id'], 
@@ -848,7 +848,7 @@ def main():
     geocodeSites()
     createRelationships()
     zipGdb()
-    # update(today)
+    update(today)
 
     elapsed = time.perf_counter() - start
     logger.debug(f'NCI retrieval process completed in {elapsed: .2f}s')
