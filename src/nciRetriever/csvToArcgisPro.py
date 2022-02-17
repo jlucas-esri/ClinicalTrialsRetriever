@@ -37,6 +37,7 @@ def csvToArcgisPro(today:date):
         f'nciUniqueMainInterventions{today}.csv',
         'DiseaseBiomarkerRelTable.csv',
         f'MainDiseaseBiomarkerRelTable{today}.csv',
+        f'MainToSubTypeRelTable{today}.csv',
         'DiseaseInterventionRelTable.csv' 
     ]
     logger.debug(f'Output gdb: {outGdbLocation}')

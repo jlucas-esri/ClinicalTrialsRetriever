@@ -7,6 +7,7 @@ from nciRetriever.geocode import geocodeSites
 from nciRetriever.createRelationships import createRelationships
 from nciRetriever.zipGdb import zipGdb
 from nciRetriever.updateItem import update
+from nciRetriever.removeTables import removeTables
 from datetime import date
 import pandas as pd
 import logging
@@ -144,6 +145,17 @@ def createDiseasesDicts(trial:dict, disease:dict) -> List[dict]:
         }
         parsedDiseases.append(diseaseDict)
     return parsedDiseases
+
+def createMainToSubTypeRelDicts(trial:dict, disease:dict) -> List[dict]:
+    if 'subtype' not in disease['type']:
+        return []
+    relDicts = []
+    for parent in disease['parents']:
+        relDicts.append({
+            'maintype': parent,
+            'subtype': disease['nci_thesaurus_concept_id']
+        })
+    return relDicts
 
 def createDiseasesWithoutSynonymsDict(trial:dict, disease:dict) -> dict:
     # diseaseDict = {
@@ -338,6 +350,10 @@ def createMainInterventionDicts(trial:dict, arm:dict) -> List[dict]:
         parsedMainInterventions.append(mainInterventionDict)
     return parsedMainInterventions
 
+def deDuplicateTable(csvName:str, deduplicationList:List[str]):
+    df = pd.read_csv(csvName)
+    df.drop_duplicates(subset=deduplicationList, inplace=True)
+    df.to_csv(csvName, index=False)
 
 def retrieveToCsv():
 
@@ -368,12 +384,14 @@ def retrieveToCsv():
     createdBiomarkerCsv = False
     createdMainBiomarkerCsv = False
     createdDiseaseCsv = False
+    createdMainToSubTypeRelTableCsv = False
     createdDiseaseWithoutSynonymsCsv = False
     createdMainDiseaseCsv = False
     createdSubTypeDiseaseCsv = False
     createdArmsCsv = False
     createdInterventionCsv = False
     createdMainInterventionCsv = False
+    
 
     for trialNumFrom in range(0, totalNumTrials, 50):
         sectionStart = time.perf_counter()
@@ -449,6 +467,11 @@ def retrieveToCsv():
             'isLeadDisease',
             'nciThesaurusConceptId',
             'name'
+        ])
+
+        mainToSubTypeRelsDf = pd.DataFrame(columns=[
+            'maintype',
+            'subtype'
         ])
 
         mainDiseasesDf = pd.DataFrame(columns=[
@@ -560,6 +583,7 @@ def retrieveToCsv():
                 
             if trial['diseases'] is not None:
                 # diseases = []
+                mainToSubTypeRel = []
                 mainDiseases = []
                 subTypeDiseases = []
                 diseasesWithoutSynonyms = []
@@ -576,8 +600,13 @@ def retrieveToCsv():
                     if diseasesWithoutSynonymsDict != {}:
                         diseasesWithoutSynonyms.append(diseasesWithoutSynonymsDict)
 
+                    mainToSubTypeRel.extend(createMainToSubTypeRelDicts(trial, disease))
+                    
+
                 # diseaseDf = pd.DataFrame.from_records(diseases)
                 # diseasesDf = pd.concat([diseasesDf, diseaseDf], ignore_index=True, verify_integrity=True)
+                mainToSubTypeRelDf = pd.DataFrame.from_records(mainToSubTypeRel)
+                mainToSubTypeRelsDf = pd.concat([mainToSubTypeRelsDf, mainToSubTypeRelDf], ignore_index=True, verify_integrity=True)
 
                 mainDiseaseDf = pd.DataFrame.from_records(mainDiseases)
                 mainDiseasesDf = pd.concat([mainDiseasesDf, mainDiseaseDf], ignore_index=True, verify_integrity=True)
@@ -622,28 +651,28 @@ def retrieveToCsv():
         createdEligibilityCsv = createAndAddToCsv(createdEligibilityCsv, eligibilityDf, f'nciEligibility{today}.csv')
         # createdBiomarkerCsv = createAndAddToCsv(createdBiomarkerCsv, biomarkersDf, f'nciBiomarkers{today}.csv')
 
-        mainBiomarkersDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
+        # mainBiomarkersDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
         createdMainBiomarkerCsv = createAndAddToCsv(createdMainBiomarkerCsv, mainBiomarkersDf, f'nciMainBiomarkers{today}.csv')
 
         # createdDiseaseCsv = createAndAddToCsv(createdDiseaseCsv, diseasesDf, f'nciDiseases{today}.csv')
 
-        diseasesWithoutSynonymsDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
+        # diseasesWithoutSynonymsDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
         createdDiseaseWithoutSynonymsCsv = createAndAddToCsv(createdDiseaseWithoutSynonymsCsv, diseasesWithoutSynonymsDf, f'nciDiseasesWithoutSynonyms{today}.csv')
 
-        mainDiseasesDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
+        # mainToSubTypeRelsDf.drop_duplicates(['maintype', 'subtype'], inplace=True)
+        createdMainToSubTypeRelTableCsv = createAndAddToCsv(createdMainToSubTypeRelTableCsv, mainToSubTypeRelsDf, f'MainToSubTypeRelTable{today}.csv')        
+
+        # mainDiseasesDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
         createdMainDiseaseCsv = createAndAddToCsv(createdMainDiseaseCsv, mainDiseasesDf, f'nciMainDiseases{today}.csv')
 
-        subTypeDiseasesDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
+        # subTypeDiseasesDf.drop_duplicates(['nciId', 'nciThesaurusConceptId'], inplace=True)
         createdSubTypeDiseaseCsv = createAndAddToCsv(createdSubTypeDiseaseCsv, subTypeDiseasesDf, f'nciSubTypeDiseases{today}.csv')
 
         createdArmsCsv = createAndAddToCsv(createdArmsCsv, armsDf, f'nciArms{today}.csv')
         # createdInterventionCsv = createAndAddToCsv(createdInterventionCsv, interventionsDf, f'nciInterventions{today}.csv')
 
-        mainInterventionsDf.drop_duplicates(['nciIdWithArm', 'nciThesaurusConceptId'], inplace=True)
+        # mainInterventionsDf.drop_duplicates(['nciIdWithArm', 'nciThesaurusConceptId'], inplace=True)
         createdMainInterventionCsv = createAndAddToCsv(createdMainInterventionCsv, mainInterventionsDf, f'nciMainInterventions{today}.csv')
-        # createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
-        # createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
-        # createdSiteCsv = createAndAddToCsv(createdSiteCsv, sitesDf, f'nciSites{today}.csv')
 
 
         sectionElapsed = time.perf_counter()-sectionStart
@@ -658,13 +687,15 @@ def retrieveToCsv():
             
     elapsed = time.perf_counter() - start
     logger.debug(f'All {totalNumTrials} trials retrieved and saved in {elapsed: .2f}s')
-    # logger.debug(sys.getsizeof(trialsDf))
-    # logger.debug(sys.getsizeof(sitesDf))
-    # logger.debug
+    logger.debug('De-duplicating all necessary csv files...')
 
-    # logger.debug(trialsResponse.json())
-    # with open('response.json', 'w') as f:
-    #     json.dump(trialJson, f)
+    deDuplicateTable(f'nciDiseasesWithoutSynonyms{today}.csv', ['nciId', 'nciThesaurusConceptId'])
+    deDuplicateTable(f'nciMainDiseases{today}.csv', ['nciId', 'nciThesaurusConceptId'])
+    deDuplicateTable(f'nciSubTypeDiseases{today}.csv', ['nciId', 'nciThesaurusConceptId'])
+    deDuplicateTable(f'MainToSubTypeRelTable{today}.csv', ['maintype', 'subtype'])
+    deDuplicateTable(f'nciMainBiomarkers{today}.csv', ['nciId', 'nciThesaurusConceptId'])
+    deDuplicateTable(f'nciMainInterventions{today}.csv', ['nciIdWithArm', 'nciThesaurusConceptId'])
+
 
 def createUniqueSitesCsv(today):
     logger.debug('Reading sites...')
@@ -720,7 +751,7 @@ def createUniqueInterventionsCsv(today):
     mainInterventionsDf = pd.read_csv(f'nciMainInterventions{today}.csv')
     logger.debug('Dropping duplicates and trial-dependent information...')
     mainInterventionsDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
-    mainInterventionsDf.drop(['nciId', 'inclusionIndicator'], axis=1, inplace=True)
+    mainInterventionsDf.drop(['nciId', 'inclusionIndicator', 'arm', 'nciIdWithArm'], axis=1, inplace=True)
     mainInterventionsDf.dropna()
     logger.debug('Saving unique interventions table...')
     mainInterventionsDf.to_csv(f'nciUniqueMainInterventions{today}.csv', index=False)
@@ -847,6 +878,8 @@ def main():
     csvToArcgisPro(today)
     geocodeSites()
     createRelationships()
+    removeTables()
+
     zipGdb()
     update(today)
 

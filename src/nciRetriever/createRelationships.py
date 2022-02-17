@@ -39,6 +39,9 @@ def createRelationships():
     # createOneToManyArmsRelationship()
     createManyToManyTableToUniqueTablesRelationship('nciArms', 'nciUniqueMainInterventions', ['nciIdWithArm', 'nciThesaurusConceptId'], 'nciMainInterventions', 'nciIdWithName', 'nciIdWithArm', 'nciThesaurusConceptId', 'nciThesaurusConceptId')
 
+    logger.debug('Relating nciUniqueMainDiseases and nciUniqueSubTypeDiseases...')
+    createManyToManyTableToUniqueTablesRelationship('nciUniqueMainDiseases', 'nciUniqueSubTypeDiseases', ['maintype', 'subtype'], 'MainToSubTypeRelTable', 'nciThesaurusConceptId', 'maintype', 'nciThesaurusConceptId', 'subtype')
+
     logger.debug('Relating nciUniqueMainDiseases with biomarkers and interventions...')
     createManyToManyTableToUniqueTablesRelationship('nciUniqueMainDiseases', 'nciUniqueMainBiomarkers', ['diseaseNciThesaurusConceptId', 'biomarkerNciThesaurusConceptId'], 'MainDiseaseBiomarkerRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'biomarkerNciThesaurusConceptId')
     createManyToManyTableToUniqueTablesRelationship('nciUniqueDiseasesWithoutSynonyms', 'nciUniqueMainBiomarkers', ['diseaseNciThesaurusConceptId', 'biomarkerNciThesaurusConceptId'], 'DiseaseBiomarkerRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'biomarkerNciThesaurusConceptId')
