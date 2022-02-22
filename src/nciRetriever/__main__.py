@@ -355,6 +355,103 @@ def deDuplicateTable(csvName:str, deduplicationList:List[str]):
     df.drop_duplicates(subset=deduplicationList, inplace=True)
     df.to_csv(csvName, index=False)
 
+def correctMainToSubTypeTable(today):
+    mainDf = pd.read_csv(f'nciUniqueMainDiseases{today}.csv')
+    subTypeDf = pd.read_csv(f'nciUniqueSubTypeDiseases{today}.csv')
+    relDf = pd.read_csv(f'MainToSubTypeRelTable{today}.csv')
+    for idx, row in relDf.iterrows():
+        parentId = row['maintype']
+        if parentId in mainDf['nciThesaurusConceptId'].values:
+            continue
+        elif parentId in subTypeDf['nciThesaurusConceptId'].values:
+            while True:
+                possibleMainTypesDf = relDf[relDf['subtype'] == parentId]
+                if possibleMainTypesDf.empty:
+                    logger.error(f'Parent {parentId} not found in main diseases or subtype diseases')
+                    parentId = ''
+                    break
+                #setting the parentId value with the parent of the subtype found
+                for value in possibleMainTypesDf['maintype'].values:
+                    if parentId == value:
+                        continue
+                    parentId = value
+                    break
+                else:
+                    logger.error(f'Parent {parentId} not found in main diseases or subtype diseases')
+                    parentId = ''
+                    break
+                # parentId = possibleMainTypesDf['maintype'].values[0]
+                if parentId in mainDf['nciThesaurusConceptId'].values:
+                    break
+
+            if parentId == '':
+                continue
+
+            relDf.iloc[idx]['maintype'] = parentId
+        else:
+            pass
+    relDf.to_csv(f'MainToSubTypeRelTable{today}.csv', index=False)
+            # logger.error(f'maintype id {parentId} is not found in main diseases or subtype diseases')
+
+def createUniqueSitesCsv(today):
+    logger.debug('Reading sites...')
+    sitesDf = pd.read_csv(f'nciSites{today}.csv')
+    logger.debug('Dropping duplicates and trial-depedent information...')
+    sitesDf.drop_duplicates(subset='orgName', inplace=True) 
+    sitesDf.drop(['recruitmentStatusDate', 'recruitmentStatus', 'nciId'], axis=1, inplace=True)
+    logger.debug('Saving unique sites table...')
+    sitesDf.to_csv(f'nciUniqueSites{today}.csv', index=False)
+
+def createUniqueDiseasesWithoutSynonymsCsv(today):
+    logger.debug('Reading diseases without synonyms...')
+    diseasesWithoutSynonymsDf = pd.read_csv(f'nciDiseasesWithoutSynonyms{today}.csv')
+    logger.debug('Dropping duplicates and trial-dependent information...')
+    diseasesWithoutSynonymsDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
+    diseasesWithoutSynonymsDf.drop(['isLeadDisease', 'inclusionIndicator', 'nciId'], axis=1, inplace=True)
+    diseasesWithoutSynonymsDf.dropna()
+    logger.debug('Saving unique diseases table...')
+    diseasesWithoutSynonymsDf.to_csv(f'nciUniqueDiseasesWithoutSynonyms{today}.csv', index=False)
+
+def createUniqueMainDiseasesCsv(today):
+    logger.debug('Reading main diseases...')
+    mainDiseasesDf = pd.read_csv(f'nciMainDiseases{today}.csv')
+    logger.debug('Dropping duplicates and trial-dependent information...')
+    mainDiseasesDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
+    mainDiseasesDf.drop(['isLeadDisease', 'inclusionIndicator', 'nciId'], axis=1, inplace=True)
+    mainDiseasesDf.dropna()
+    logger.debug('Saving unique diseases table...')
+    mainDiseasesDf.to_csv(f'nciUniqueMainDiseases{today}.csv', index=False)
+
+def createUniqueSubTypeDiseasesCsv(today):
+    logger.debug('Reading main diseases...')
+    subTypeDiseasesDf = pd.read_csv(f'nciSubTypeDiseases{today}.csv')
+    logger.debug('Dropping duplicates and trial-dependent information...')
+    subTypeDiseasesDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
+    subTypeDiseasesDf.drop(['isLeadDisease', 'inclusionIndicator', 'nciId'], axis=1, inplace=True)
+    subTypeDiseasesDf.dropna()
+    logger.debug('Saving unique diseases table...')
+    subTypeDiseasesDf.to_csv(f'nciUniqueSubTypeDiseases{today}.csv', index=False)
+
+def createUniqueBiomarkersCsv(today):
+    logger.debug('Reading main biomarkers...')
+    mainBiomarkersDf = pd.read_csv(f'nciMainBiomarkers{today}.csv')
+    logger.debug('Dropping duplicates and trial-dependent information...')
+    mainBiomarkersDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
+    mainBiomarkersDf.drop(['eligibilityCriterion', 'inclusionIndicator', 'assayPurpose', 'nciId'], axis=1, inplace=True)
+    mainBiomarkersDf.dropna()
+    logger.debug('Saving unique biomarkers table...')
+    mainBiomarkersDf.to_csv(f'nciUniqueMainBiomarkers{today}.csv', index=False)
+
+def createUniqueInterventionsCsv(today):
+    logger.debug('Reading main interventions...')
+    mainInterventionsDf = pd.read_csv(f'nciMainInterventions{today}.csv')
+    logger.debug('Dropping duplicates and trial-dependent information...')
+    mainInterventionsDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
+    mainInterventionsDf.drop(['nciId', 'inclusionIndicator', 'arm', 'nciIdWithArm'], axis=1, inplace=True)
+    mainInterventionsDf.dropna()
+    logger.debug('Saving unique interventions table...')
+    mainInterventionsDf.to_csv(f'nciUniqueMainInterventions{today}.csv', index=False)
+
 def retrieveToCsv():
 
 
@@ -692,69 +789,24 @@ def retrieveToCsv():
     deDuplicateTable(f'nciDiseasesWithoutSynonyms{today}.csv', ['nciId', 'nciThesaurusConceptId'])
     deDuplicateTable(f'nciMainDiseases{today}.csv', ['nciId', 'nciThesaurusConceptId'])
     deDuplicateTable(f'nciSubTypeDiseases{today}.csv', ['nciId', 'nciThesaurusConceptId'])
-    deDuplicateTable(f'MainToSubTypeRelTable{today}.csv', ['maintype', 'subtype'])
     deDuplicateTable(f'nciMainBiomarkers{today}.csv', ['nciId', 'nciThesaurusConceptId'])
     deDuplicateTable(f'nciMainInterventions{today}.csv', ['nciIdWithArm', 'nciThesaurusConceptId'])
 
+    createUniqueSitesCsv(today)
+    createUniqueBiomarkersCsv(today)
+    createUniqueDiseasesWithoutSynonymsCsv(today)
+    createUniqueMainDiseasesCsv(today)
+    createUniqueSubTypeDiseasesCsv(today)
+    createUniqueInterventionsCsv(today)
 
-def createUniqueSitesCsv(today):
-    logger.debug('Reading sites...')
-    sitesDf = pd.read_csv(f'nciSites{today}.csv')
-    logger.debug('Dropping duplicates and trial-depedent information...')
-    sitesDf.drop_duplicates(subset='orgName', inplace=True) 
-    sitesDf.drop(['recruitmentStatusDate', 'recruitmentStatus', 'nciId'], axis=1, inplace=True)
-    logger.debug('Saving unique sites table...')
-    sitesDf.to_csv(f'nciUniqueSites{today}.csv', index=False)
+    deDuplicateTable(f'MainToSubTypeRelTable{today}.csv', ['maintype', 'subtype'])
+    logger.debug('Correcting any subtype ids in the maintype column for the main disease to subtype disease relationship table...')
+    start = time.perf_counter()
+    correctMainToSubTypeTable(today)
+    elapsed = time.perf_counter() - start
+    logger.debug(f'Main disease to subtype disease relationship table corrected in {elapsed: .2f}s')
+    deDuplicateTable(f'MainToSubTypeRelTable{today}.csv', ['maintype', 'subtype'])
 
-def createUniqueDiseasesWithoutSynonymsCsv(today):
-    logger.debug('Reading diseases without synonyms...')
-    diseasesWithoutSynonymsDf = pd.read_csv(f'nciDiseasesWithoutSynonyms{today}.csv')
-    logger.debug('Dropping duplicates and trial-dependent information...')
-    diseasesWithoutSynonymsDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
-    diseasesWithoutSynonymsDf.drop(['isLeadDisease', 'inclusionIndicator', 'nciId'], axis=1, inplace=True)
-    diseasesWithoutSynonymsDf.dropna()
-    logger.debug('Saving unique diseases table...')
-    diseasesWithoutSynonymsDf.to_csv(f'nciUniqueDiseasesWithoutSynonyms{today}.csv', index=False)
-
-def createUniqueMainDiseasesCsv(today):
-    logger.debug('Reading main diseases...')
-    mainDiseasesDf = pd.read_csv(f'nciMainDiseases{today}.csv')
-    logger.debug('Dropping duplicates and trial-dependent information...')
-    mainDiseasesDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
-    mainDiseasesDf.drop(['isLeadDisease', 'inclusionIndicator', 'nciId'], axis=1, inplace=True)
-    mainDiseasesDf.dropna()
-    logger.debug('Saving unique diseases table...')
-    mainDiseasesDf.to_csv(f'nciUniqueMainDiseases{today}.csv', index=False)
-
-def createUniqueSubTypeDiseasesCsv(today):
-    logger.debug('Reading main diseases...')
-    subTypeDiseasesDf = pd.read_csv(f'nciSubTypeDiseases{today}.csv')
-    logger.debug('Dropping duplicates and trial-dependent information...')
-    subTypeDiseasesDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
-    subTypeDiseasesDf.drop(['isLeadDisease', 'inclusionIndicator', 'nciId'], axis=1, inplace=True)
-    subTypeDiseasesDf.dropna()
-    logger.debug('Saving unique diseases table...')
-    subTypeDiseasesDf.to_csv(f'nciUniqueSubTypeDiseases{today}.csv', index=False)
-
-def createUniqueBiomarkersCsv(today):
-    logger.debug('Reading main biomarkers...')
-    mainBiomarkersDf = pd.read_csv(f'nciMainBiomarkers{today}.csv')
-    logger.debug('Dropping duplicates and trial-dependent information...')
-    mainBiomarkersDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
-    mainBiomarkersDf.drop(['eligibilityCriterion', 'inclusionIndicator', 'assayPurpose', 'nciId'], axis=1, inplace=True)
-    mainBiomarkersDf.dropna()
-    logger.debug('Saving unique biomarkers table...')
-    mainBiomarkersDf.to_csv(f'nciUniqueMainBiomarkers{today}.csv', index=False)
-
-def createUniqueInterventionsCsv(today):
-    logger.debug('Reading main interventions...')
-    mainInterventionsDf = pd.read_csv(f'nciMainInterventions{today}.csv')
-    logger.debug('Dropping duplicates and trial-dependent information...')
-    mainInterventionsDf.drop_duplicates(subset='nciThesaurusConceptId', inplace=True)
-    mainInterventionsDf.drop(['nciId', 'inclusionIndicator', 'arm', 'nciIdWithArm'], axis=1, inplace=True)
-    mainInterventionsDf.dropna()
-    logger.debug('Saving unique interventions table...')
-    mainInterventionsDf.to_csv(f'nciUniqueMainInterventions{today}.csv', index=False)
 
 def createDiseasesAndBiomarkersRelTable(today, inputCsv:str, outputCsv:str):
     logger.debug('Creating diseases and biomarkers relationship...')
@@ -866,14 +918,8 @@ def main():
     start = time.perf_counter()
 
     retrieveToCsv()
-    createUniqueSitesCsv(today)
-    createUniqueBiomarkersCsv(today)
-    createUniqueDiseasesWithoutSynonymsCsv(today)
-    createUniqueMainDiseasesCsv(today)
-    createUniqueSubTypeDiseasesCsv(today)
-    createUniqueInterventionsCsv(today)
     createDiseasesAndBiomarkersRelTable(today, f'nciUniqueMainDiseases{today}.csv', f'MainDiseaseBiomarkerRelTable{today}.csv')
-    # createDiseasesAndBiomarkersRelTable(today, f'nciUniqueDiseasesWithoutSynonyms{today}.csv', 'DiseaseBiomarkerRelTable.csv')
+    # # # createDiseasesAndBiomarkersRelTable(today, f'nciUniqueDiseasesWithoutSynonyms{today}.csv', 'DiseaseBiomarkerRelTable.csv')
     createDiseasesAndInterventionsRelTable(today)
     csvToArcgisPro(today)
     geocodeSites()
