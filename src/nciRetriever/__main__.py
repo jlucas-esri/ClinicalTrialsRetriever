@@ -927,7 +927,7 @@ def main():
     removeTables()
 
     zipGdb()
-    update(today)
+    # update(today)
 
     elapsed = time.perf_counter() - start
     logger.debug(f'NCI retrieval process completed in {elapsed: .2f}s')
