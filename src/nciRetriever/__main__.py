@@ -919,7 +919,7 @@ def main():
 
     retrieveToCsv()
     createDiseasesAndBiomarkersRelTable(today, f'nciUniqueMainDiseases{today}.csv', f'MainDiseaseBiomarkerRelTable{today}.csv')
-    # # # createDiseasesAndBiomarkersRelTable(today, f'nciUniqueDiseasesWithoutSynonyms{today}.csv', 'DiseaseBiomarkerRelTable.csv')
+    # # # # createDiseasesAndBiomarkersRelTable(today, f'nciUniqueDiseasesWithoutSynonyms{today}.csv', 'DiseaseBiomarkerRelTable.csv')
     createDiseasesAndInterventionsRelTable(today)
     csvToArcgisPro(today)
     geocodeSites()

@@ -13,7 +13,7 @@ logger.setLevel(logging.DEBUG)
 
 def update(today:date):
     gis = GIS('pro')
-    newGdbZip = os.path.realpath(r'./NCIClinicalTrialsAPI.gdb.zip')
+    newGdbZip = os.path.realpath(r'./NCIClinicalTrialsApiFinal.gdb.zip')
 
     logger.debug('Getting and overwriting item...')
     start = time.perf_counter()
