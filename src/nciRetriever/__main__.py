@@ -1,13 +1,13 @@
 import requests
 from typing import List
 import re
-from nciRetriever.updateFC import updateFC
-from nciRetriever.csvToArcgisPro import csvToArcgisPro
-from nciRetriever.geocode import geocodeSites
-from nciRetriever.createRelationships import createRelationships
-from nciRetriever.zipGdb import zipGdb
-from nciRetriever.updateItem import update
-from nciRetriever.removeTables import removeTables
+# from nciRetriever.updateFC import updateFC
+# from nciRetriever.csvToArcgisPro import csvToArcgisPro
+# from nciRetriever.geocode import geocodeSites
+# from nciRetriever.createRelationships import createRelationships
+# from nciRetriever.zipGdb import zipGdb
+# from nciRetriever.updateItem import update
+# from nciRetriever.removeTables import removeTables
 from datetime import date
 import pandas as pd
 import logging
@@ -53,7 +53,7 @@ def createTrialDict(trial: dict) -> dict:
     if 'max_age_in_years' in trial['eligibility']['structured'].keys():
         trialDict.update({'maxAgeInYears': int(trial['eligibility']['structured']['max_age_in_years'])})
     if 'min_age_in_years' in trial['eligibility']['structured'].keys():
-        trialDict.update({'minAgeInYears': int(trial['eligibility']['structured']['min_age_in_years'])})
+        trialDict.update({'minAgeInYears': int(trial['eligibility']['structured']['min_age_in_years']) if trial['eligibility']['structured']['min_age_in_years'] is not None else None})
     if 'gender' in trial['eligibility']['structured'].keys():
         trialDict.update({'gender': trial['eligibility']['structured']['gender']})
     if 'accepts_healthy_volunteers' in trial['eligibility']['structured'].keys():
@@ -456,7 +456,7 @@ def retrieveToCsv():
 
 
     baseUrl = r'https://clinicaltrialsapi.cancer.gov/api/v2/'
-    with open('./nciRetriever/secrets/key.txt') as f:
+    with open('./nciRetriever/secrets/key.txt', 'r') as f:
         apiKey = f.read()
 
     headers = {
@@ -667,14 +667,14 @@ def retrieveToCsv():
                 biomarkers = []
                 mainBiomarkers = []
                 for biomarker in trial['biomarkers']:
-                    biomarkers.extend(createBiomarkersDicts(trial, biomarker))
+                    # biomarkers.extend(createBiomarkersDicts(trial, biomarker))
 
                     mainBiomarkersDict = createMainBiomarkersDict(trial, biomarker)
                     if mainBiomarkersDict != {}:
                         mainBiomarkers.append(mainBiomarkersDict)
 
-                biomarkerDf = pd.DataFrame.from_records(biomarkers)
-                biomarkersDf = pd.concat([biomarkersDf, biomarkerDf], ignore_index=True, verify_integrity=True)
+                # biomarkerDf = pd.DataFrame.from_records(biomarkers)
+                # biomarkersDf = pd.concat([biomarkersDf, biomarkerDf], ignore_index=True, verify_integrity=True)
                 mainBiomarkerDf = pd.DataFrame.from_records(mainBiomarkers)
                 mainBiomarkersDf = pd.concat([mainBiomarkersDf, mainBiomarkerDf], ignore_index=True, verify_integrity=True)
                 
@@ -921,13 +921,13 @@ def main():
     createDiseasesAndBiomarkersRelTable(today, f'nciUniqueMainDiseases{today}.csv', f'MainDiseaseBiomarkerRelTable{today}.csv')
     # # # # createDiseasesAndBiomarkersRelTable(today, f'nciUniqueDiseasesWithoutSynonyms{today}.csv', 'DiseaseBiomarkerRelTable.csv')
     createDiseasesAndInterventionsRelTable(today)
-    csvToArcgisPro(today)
-    geocodeSites()
-    createRelationships()
-    removeTables()
+    # csvToArcgisPro(today)
+    # geocodeSites()
+    # createRelationships()
+    # removeTables()
 
-    zipGdb()
-    update(today)
+    # zipGdb()
+    # update(today)
 
     elapsed = time.perf_counter() - start
     logger.debug(f'NCI retrieval process completed in {elapsed: .2f}s')
