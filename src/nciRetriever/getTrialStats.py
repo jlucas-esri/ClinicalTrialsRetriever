@@ -30,6 +30,7 @@ def getTrialStats(today:date):
 
     sitesDiseaseCountDf = pd.DataFrame.from_records(sitesDiseaseCount)
     sitesDiseaseCountDf = sitesDiseaseCountDf.value_counts(['orgName', 'nciThesaurusConceptId', 'disease']).reset_index()
+    sitesDiseaseCountDf.rename(columns={0: 'numTrials'}, inplace=True, errors='raise')
     sitesDiseaseCountDf.to_csv(f'nciSitesToDiseasesCount{today}.csv', index=False)
 
 def deDuplicateStats(today:date):
