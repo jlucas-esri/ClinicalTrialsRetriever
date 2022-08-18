@@ -1,13 +1,13 @@
 import requests
 from typing import List
 import re
-# from nciRetriever.updateFC import updateFC
-# from nciRetriever.csvToArcgisPro import csvToArcgisPro
-# from nciRetriever.geocode import geocodeSites
-# from nciRetriever.createRelationships import createRelationships
-# from nciRetriever.zipGdb import zipGdb
-# from nciRetriever.updateItem import update
-# from nciRetriever.removeTables import removeTables
+from nciRetriever.updateFC import updateFC
+from nciRetriever.csvToArcgisPro import csvToArcgisPro
+from nciRetriever.geocode import geocodeSites
+from nciRetriever.createRelationships import createRelationships
+from nciRetriever.zipGdb import zipGdb
+from nciRetriever.updateItem import update
+from nciRetriever.removeTables import removeTables
 from datetime import date
 import pandas as pd
 import logging
@@ -921,13 +921,13 @@ def main():
     createDiseasesAndBiomarkersRelTable(today, f'nciUniqueMainDiseases{today}.csv', f'MainDiseaseBiomarkerRelTable{today}.csv')
     # # # # createDiseasesAndBiomarkersRelTable(today, f'nciUniqueDiseasesWithoutSynonyms{today}.csv', 'DiseaseBiomarkerRelTable.csv')
     createDiseasesAndInterventionsRelTable(today)
-    # csvToArcgisPro(today)
-    # geocodeSites()
-    # createRelationships()
-    # removeTables()
+    csvToArcgisPro(today)
+    geocodeSites()
+    createRelationships()
+    removeTables()
 
-    # zipGdb()
-    # update(today)
+    zipGdb()
+    update(today)
 
     elapsed = time.perf_counter() - start
     logger.debug(f'NCI retrieval process completed in {elapsed: .2f}s')
