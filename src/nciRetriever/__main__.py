@@ -96,7 +96,11 @@ def createSiteDict(trial:dict, site:dict) -> dict:
 
 def createBiomarkersDicts(trial:dict, marker:dict) -> List[dict]:
     parsedBiomarkers = []
-    for name in [*marker['synonyms'], marker['name']]:
+    if marker['synonyms'] is None:
+        namesList = [marker['name']]
+    else:
+        namesList = [*marker['synonyms'], marker['name']]
+    for name in namesList:
         biomarkerDict = {
             'nciId': trial['nci_id'],
             'nciThesaurusConceptId': marker['nci_thesaurus_concept_id'],
