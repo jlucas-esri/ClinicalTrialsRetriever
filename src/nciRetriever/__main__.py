@@ -151,7 +151,7 @@ def createDiseasesDicts(trial:dict, disease:dict) -> List[dict]:
     return parsedDiseases
 
 def createMainToSubTypeRelDicts(trial:dict, disease:dict) -> List[dict]:
-    if 'subtype' not in disease['type']:
+    if disease['type'] is None or 'subtype' not in disease['type']:
         return []
     relDicts = []
     for parent in disease['parents']:
@@ -209,7 +209,7 @@ def createMainDiseasesDict(trial:dict, disease:dict) -> dict:
     # return diseaseDict
     # if 'type' not in disease.keys():
     #     return {}
-    if 'maintype' not in disease['type']:
+    if disease['type'] is None or 'maintype' not in disease['type']:
         return {}
 
     try:
@@ -241,7 +241,7 @@ def createSubTypeDiseasesDict(trial:dict, disease:dict) -> dict:
     # return diseaseDict
     # if 'type' not in disease.keys():
     #     return {}
-    if 'subtype' not in disease['type']:
+    if disease['type'] is None or 'subtype' not in disease['type']:
         return {}
 
     try:
@@ -357,6 +357,7 @@ def createMainInterventionDicts(trial:dict, arm:dict) -> List[dict]:
 def deDuplicateTable(csvName:str, deduplicationList:List[str]):
     df = pd.read_csv(csvName)
     df.drop_duplicates(subset=deduplicationList, inplace=True)
+    df.dropna(subset=deduplicationList, inplace=True)
     df.to_csv(csvName, index=False)
 
 def correctMainToSubTypeTable(today):
@@ -922,9 +923,9 @@ def main():
     start = time.perf_counter()
 
     retrieveToCsv()
-    createDiseasesAndBiomarkersRelTable(today, f'nciUniqueMainDiseases{today}.csv', f'MainDiseaseBiomarkerRelTable{today}.csv')
+    # createDiseasesAndBiomarkersRelTable(today, f'nciUniqueMainDiseases{today}.csv', f'MainDiseaseBiomarkerRelTable{today}.csv')
     # # # # createDiseasesAndBiomarkersRelTable(today, f'nciUniqueDiseasesWithoutSynonyms{today}.csv', 'DiseaseBiomarkerRelTable.csv')
-    createDiseasesAndInterventionsRelTable(today)
+    # createDiseasesAndInterventionsRelTable(today)
     csvToArcgisPro(today)
     geocodeSites()
     createRelationships()

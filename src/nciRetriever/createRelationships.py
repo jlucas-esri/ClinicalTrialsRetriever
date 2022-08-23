@@ -43,9 +43,9 @@ def createRelationships():
     createManyToManyTableToUniqueTablesRelationship('nciUniqueMainDiseases', 'nciUniqueSubTypeDiseases', ['maintype', 'subtype'], 'MainToSubTypeRelTable', 'nciThesaurusConceptId', 'maintype', 'nciThesaurusConceptId', 'subtype')
 
     logger.debug('Relating nciUniqueMainDiseases with biomarkers and interventions...')
-    createManyToManyTableToUniqueTablesRelationship('nciUniqueMainDiseases', 'nciUniqueMainBiomarkers', ['diseaseNciThesaurusConceptId', 'biomarkerNciThesaurusConceptId'], 'MainDiseaseBiomarkerRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'biomarkerNciThesaurusConceptId')
-    createManyToManyTableToUniqueTablesRelationship('nciUniqueDiseasesWithoutSynonyms', 'nciUniqueMainBiomarkers', ['diseaseNciThesaurusConceptId', 'biomarkerNciThesaurusConceptId'], 'DiseaseBiomarkerRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'biomarkerNciThesaurusConceptId')
-    createManyToManyTableToUniqueTablesRelationship('nciUniqueMainDiseases', 'nciUniqueMainInterventions', ['diseaseNciThesaurusConceptId', 'interventionNciThesaurusConceptId'], 'DiseaseInterventionRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'interventionNciThesaurusConceptId')
+    # createManyToManyTableToUniqueTablesRelationship('nciUniqueMainDiseases', 'nciUniqueMainBiomarkers', ['diseaseNciThesaurusConceptId', 'biomarkerNciThesaurusConceptId'], 'MainDiseaseBiomarkerRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'biomarkerNciThesaurusConceptId')
+    # createManyToManyTableToUniqueTablesRelationship('nciUniqueDiseasesWithoutSynonyms', 'nciUniqueMainBiomarkers', ['diseaseNciThesaurusConceptId', 'biomarkerNciThesaurusConceptId'], 'DiseaseBiomarkerRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'biomarkerNciThesaurusConceptId')
+    # createManyToManyTableToUniqueTablesRelationship('nciUniqueMainDiseases', 'nciUniqueMainInterventions', ['diseaseNciThesaurusConceptId', 'interventionNciThesaurusConceptId'], 'DiseaseInterventionRelTable', 'nciThesaurusConceptId', 'diseaseNciThesaurusConceptId', 'nciThesaurusConceptId', 'interventionNciThesaurusConceptId')
 
 def createOneToManyTrialRelationship(destTable:str):
     arcpy.management.CreateRelationshipClass(
