@@ -19,7 +19,7 @@ def zipGdb() -> str:
     # shutil.make_archive(os.path.basename(gdb), 'zip', gdb)
     logger.debug('Zipping Gdb...')
     start = time.perf_counter()
-    with ZipFile('NCIClinicalTrialsApiFinal.gdb.zip', 'w', ZIP_DEFLATED) as zip:
+    with ZipFile('NCIClinicalTrialsApiFinal2.gdb.zip', 'w', ZIP_DEFLATED) as zip:
         addNonLockFiles(zip)       
     elapsed = time.perf_counter() - start
     logger.debug(f'Zipped Gdb in {elapsed: .2f}s')
