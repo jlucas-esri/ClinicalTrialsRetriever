@@ -1,7 +1,7 @@
 # ClinicalTrialsRetriever
 interacting with the clinical trials api and retrieving relevant data for Esri cancer project
 
-### Locations:
+### Details:
 
 The main script is `src/nciRetriever/__main__.py`
 
